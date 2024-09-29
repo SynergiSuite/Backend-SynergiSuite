@@ -1,8 +1,9 @@
-import { Controller, UseGuards, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller , UseGuards, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { userAlreadyExistGuard, userExistGuard } from './user.guard';
+import { EmailDto } from 'src/mailer/dto/email.dto';
+import { isUserVerfied, userAlreadyExistGuard, userExistGuard } from './user.guard';
 import { console } from 'inspector';
 
 @Controller('user')
@@ -20,10 +21,22 @@ export class UserController {
     return this.userService.findAll();
   }
 
-  @Post('check_verification')
+  @Get('check_verification')
   @UseGuards(userExistGuard)
-  async checkVerification(@Body('email') email: string) {
+  async checkVerification(@Param('email') email: string) {
     return this.userService.checkVerification(email)
+  }
+
+  @Post('request-verification')
+  @UseGuards(userExistGuard, isUserVerfied)
+  async requestVerification(@Body() emailDto ) {
+    return this.userService.requestVerfication(emailDto)
+  }
+
+  @Post('set-verification')
+  @UseGuards(userExistGuard, isUserVerfied)
+  async setVerification(@Body() updateUserDto: UpdateUserDto ) {
+    return this.userService.setVerification(updateUserDto)
   }
 
   @Get(':id')
@@ -48,7 +61,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  remove(@Param('id') id: number) {
+    return this.userService.remove(id);
   }
 }
