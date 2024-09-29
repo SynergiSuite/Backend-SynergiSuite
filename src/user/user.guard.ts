@@ -11,7 +11,6 @@ export class userAlreadyExistGuard implements CanActivate {
         const createUserDto = request.body
 
         const existingUser = await this.userService.findByEmail(createUserDto.email)
-        console.log(existingUser)
 
         if (existingUser) {
             throw new ConflictException("Operation unsuccessfull on " + createUserDto.email)
@@ -36,6 +35,26 @@ export class userExistGuard implements CanActivate {
             throw new ConflictException("Could not find email!")
         } else {
             return true
+        }
+    }
+}
+
+@Injectable()
+export class isUserVerfied implements CanActivate {
+    constructor(private readonly userService: UserService){}
+
+    async canActivate(context: ExecutionContext): Promise<boolean>  {
+
+        const request = context.switchToHttp().getRequest()
+        const createUserDto = request.body
+
+        const existingUser = await this.userService.findByEmail(createUserDto.email)
+
+        if (existingUser.is_Verified) {
+            throw new ConflictException("Could not find email!")
+        } else {
+            return true
+            
         }
     }
 }

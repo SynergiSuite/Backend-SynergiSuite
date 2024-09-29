@@ -4,15 +4,17 @@ import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm'
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { EmailDto } from 'src/mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
 import { User } from './entities/user.entity';
+import { EmailService } from 'src/mailer/email.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: 
-    Repository<User> 
+    private readonly userRepository: Repository<User>,
+    private readonly mailerService: EmailService,
   ){}
 
   async create(createUserDto: CreateUserDto) {
@@ -102,13 +104,58 @@ export class UserService {
   
       return { message: "Password updated successfully!", email: updateUserDto.email };
     } catch (error) {
-      return { message: "Unable to update password", email: updateUserDto.email };
+      return { message: "Unable to update password", email: updateUserDto.email, error: error };
     }
   }
-  
+
+  async requestVerfication(emailDto: EmailDto) {
+    try{
+      const code = Math.floor(1000 + Math.random() * 9000);
+      emailDto.text = "Your verification code is " + code
+      const codeUpdate = await this.userRepository.update({email: emailDto.email}, {verification_code: code})
+      const sendEmail = await this.mailerService.sendVerificationEmail(emailDto)
+      return {
+        message: "email sent"
+      }
+    } catch (error) {
+      return {
+        message: "unable to send mail",
+        error: error.message
+      }
+    }
+  }
+
+  async setVerification(updateUserDto: UpdateUserDto) {
+    try {
+      const user = await this.findByEmail(updateUserDto.email)
+      const userCode = user.verification_code
+      if (userCode === updateUserDto.code) {
+        await this.userRepository.update({email: updateUserDto.email}, {is_Verified: true})
+        return {
+          message: "Account verified successfully",
+          user
+        }
+      }
+    } catch (error) {
+      return {
+        message: "Invalid request",
+        error: error.message
+      }
+    }
+  }
 
   remove(id: number) {
-    return `This action removes a #${id} user`;
+    try {
+      const deletedUser = this.userRepository.delete(id)
+      return{
+        message: "Account removed successfully!"
+      }
+    } catch (error) {
+      return {
+        message: "Unable to perofrm this action!"
+      }
+    }
   }
+
 }
 
