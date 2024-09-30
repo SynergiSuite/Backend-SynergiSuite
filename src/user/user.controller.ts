@@ -49,9 +49,10 @@ export class UserController {
     return this.userService.updateName(id, updateUserDto);
   }
 
-  @Patch('update-email/:id')
-  updateEmail(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.updateName(id, updateUserDto);
+  @Patch('update-email')
+  @UseGuards(userExistGuard)
+  updateEmail(@Body() updateUserDto: UpdateUserDto) {
+    return this.userService.updateEmail(updateUserDto);
   }
 
   @Patch("update-password")

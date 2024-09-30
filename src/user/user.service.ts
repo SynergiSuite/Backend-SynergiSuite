@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm'
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm'
@@ -8,6 +8,7 @@ import { EmailDto } from 'src/mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
 import { User } from './entities/user.entity';
 import { EmailService } from 'src/mailer/email.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
@@ -15,9 +16,10 @@ export class UserService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly mailerService: EmailService,
+    private readonly jwtService: JwtService
   ){}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto): Promise<VerificationResponseDto> {
     const saltRounds = 10
     const hashedPassword = await bcrypt.hash(createUserDto.password_hash, saltRounds)
     const user = this.userRepository.create({
@@ -57,8 +59,8 @@ export class UserService {
     }
   }
 
-  async findOne(id: number) {
-    const user = await this.userRepository.find({where: {user_id: id}})
+  async findOne(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({where: {user_id: id}})
     return user
   }
 
@@ -67,27 +69,42 @@ export class UserService {
     return user
   }
 
-  async updateName(id: number, updateUserDto: UpdateUserDto) {
+  async updateName(id: number, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
     const updatedUser = await this.userRepository.update({user_id: id}, {name: updateUserDto.name})
     return {
       message: "Name updated successfully!",
-      userName: updateUserDto.name,
-      userEmail: updateUserDto.email,
-      user: this.findOne(id)
+      name: updateUserDto.name,
+      email: updateUserDto.email
     }
   }
 
-  async updateEmail(id: number, updateUserDto: UpdateUserDto) {
-    const updatedUser = await this.userRepository.update({user_id: id}, {email: updateUserDto.email})
-    return {
-      message: "Email updated successfully!",
-      userName: updateUserDto.name,
-      userEmail: updateUserDto.email,
-      user: await this.userRepository.findOne({where: {user_id: id}})
+  async updateEmail(updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
+    const newMailVerification = await this.verifyNewEmail(updateUserDto.new_email)
+    if (!newMailVerification) {
+      return {
+        message: "User on " + updateUserDto.new_email + " already exists"
+      }
     }
+
+    const passwordVerification = await this.verifyPassword(updateUserDto)
+    if (!passwordVerification) {
+      return {
+        message: "Invalid credentials. Please enter valid password."
+      }
+    }
+    try {
+      const updatedUser = await this.userRepository.update({email: updateUserDto.email}, {email: updateUserDto.new_email, is_Verified: false})
+      return {
+        message: "Email updated successfully!"
+      }
+    } catch (error) {
+      return {
+        message: "An error occured: " + error.message
+      }
+    } 
   }
 
-  async updatePassword(updateUserDto: UpdateUserDto) {
+  async updatePassword(updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
     const user = await this.findByEmail(updateUserDto.email);
     if (!user) {
       return { message: "User not found", email: updateUserDto.email };
@@ -95,37 +112,35 @@ export class UserService {
   
     const isPasswordValid = await bcrypt.compare(updateUserDto.old_password, user.password_hash);
     if (!isPasswordValid) {
-      return { message: "Previous password is incorrect", email: updateUserDto.email };
+      return { message: "Previous password is incorrect", email: updateUserDto.email};
     }
   
     try {
       const hashedNewPassword = await bcrypt.hash(updateUserDto.new_password, 10);
       await this.userRepository.update({ user_id: user.user_id }, { password_hash: hashedNewPassword });
   
-      return { message: "Password updated successfully!", email: updateUserDto.email };
+      return { message: "Password updated successfully!", email: updateUserDto.email, status: HttpStatus.OK };
     } catch (error) {
-      return { message: "Unable to update password", email: updateUserDto.email, error: error };
-    }
+      throw new HttpException("Unable to update password", HttpStatus.BAD_REQUEST)
+        }
   }
 
-  async requestVerfication(emailDto: EmailDto) {
+  async requestVerfication(emailDto: EmailDto): Promise<VerificationResponseDto> {
     try{
       const code = Math.floor(1000 + Math.random() * 9000);
       emailDto.text = "Your verification code is " + code
       const codeUpdate = await this.userRepository.update({email: emailDto.email}, {verification_code: code})
       const sendEmail = await this.mailerService.sendVerificationEmail(emailDto)
       return {
-        message: "email sent"
+        message: "email sent",
+        status: HttpStatus.OK
       }
     } catch (error) {
-      return {
-        message: "unable to send mail",
-        error: error.message
-      }
+      throw new HttpException(error.message , HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async setVerification(updateUserDto: UpdateUserDto) {
+  async setVerification(updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
     try {
       const user = await this.findByEmail(updateUserDto.email)
       const userCode = user.verification_code
@@ -133,13 +148,15 @@ export class UserService {
         await this.userRepository.update({email: updateUserDto.email}, {is_Verified: true})
         return {
           message: "Account verified successfully",
-          user
+          user,
+          status: HttpStatus.ACCEPTED
         }
       }
     } catch (error) {
       return {
         message: "Invalid request",
-        error: error.message
+        error: error.message,
+        status: HttpStatus.BAD_REQUEST
       }
     }
   }
@@ -148,13 +165,36 @@ export class UserService {
     try {
       const deletedUser = this.userRepository.delete(id)
       return{
-        message: "Account removed successfully!"
+        message: "Account removed successfully!",
+        status: HttpStatus.OK
       }
     } catch (error) {
-      return {
-        message: "Unable to perofrm this action!"
-      }
+      throw new HttpException("Unable to perofrm this action!", HttpStatus.NOT_ACCEPTABLE);
     }
+  }
+
+  async verifyPassword(updateUserDto: UpdateUserDto): Promise<Boolean | VerificationResponseDto>  {
+    const user = await this.findByEmail(updateUserDto.email)
+    try {
+      const verifyPassword = await bcrypt.compare(updateUserDto.old_password, user.password_hash)
+      if (!verifyPassword) {
+        return false
+      }
+      return {
+        user: user
+      }
+    } catch (error) {
+      throw new HttpException("Invalid Credentials", HttpStatus.BAD_REQUEST);
+      
+    }
+  }
+
+  async verifyNewEmail(email: string): Promise<Boolean> {
+    const user = await this.findByEmail(email)
+    if (user) {
+      return false
+    }
+    return true
   }
 
 }
