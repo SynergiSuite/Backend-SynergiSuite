@@ -1,4 +1,4 @@
-import { CanActivate, Injectable, ExecutionContext, ConflictException } from "@nestjs/common";
+import { CanActivate, Injectable, ExecutionContext, ConflictException, NotFoundException } from "@nestjs/common";
 import { UserService } from "./user.service";
 
 @Injectable()
@@ -13,7 +13,7 @@ export class userAlreadyExistGuard implements CanActivate {
         const existingUser = await this.userService.findByEmail(createUserDto.email)
 
         if (existingUser) {
-            throw new ConflictException("Operation unsuccessfull on " + createUserDto.email)
+            throw new ConflictException("User Already Exist")
         } else {
             return true
         }
@@ -32,7 +32,7 @@ export class userExistGuard implements CanActivate {
         const existingUser = await this.userService.findByEmail(createUserDto.email)
 
         if (!existingUser) {
-            throw new ConflictException("Could not find email!")
+            throw new NotFoundException("Could not find email!")
         } else {
             return true
         }
