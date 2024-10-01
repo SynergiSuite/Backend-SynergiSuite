@@ -1,20 +1,16 @@
-import { Controller , UseGuards, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller , UseGuards, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { EmailDto } from 'src/mailer/dto/email.dto';
 import { isUserVerfied, userAlreadyExistGuard, userExistGuard } from './user.guard';
 import { console } from 'inspector';
+import { JwtGuard } from 'src/shared/auth.guard';
+import { Request } from 'express';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
-  @Post('create/new')
-  @UseGuards(userAlreadyExistGuard)
-  async create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
-  }
 
   @Get()
   findAll() {
@@ -22,19 +18,19 @@ export class UserController {
   }
 
   @Get('check_verification')
-  @UseGuards(userExistGuard)
+  @UseGuards(userExistGuard, JwtGuard)
   async checkVerification(@Param('email') email: string) {
     return this.userService.checkVerification(email)
   }
 
   @Post('request-verification')
-  @UseGuards(userExistGuard, isUserVerfied)
-  async requestVerification(@Body() emailDto ) {
+  @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
+  async requestVerification(@Req() req: Request ,@Body() emailDto ) {
     return this.userService.requestVerfication(emailDto)
   }
 
   @Post('set-verification')
-  @UseGuards(userExistGuard, isUserVerfied)
+  @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
   async setVerification(@Body() updateUserDto: UpdateUserDto ) {
     return this.userService.setVerification(updateUserDto)
   }
@@ -44,21 +40,22 @@ export class UserController {
     return this.userService.findOne(+id);
   }
 
-  @Patch('update-name/:id')
-  updateName(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.updateName(id, updateUserDto);
+  @Patch('update-name')
+  @UseGuards(JwtGuard)
+  updateName(@Req() req: Request, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.updateName(req.user, updateUserDto);
   }
 
   @Patch('update-email')
-  @UseGuards(userExistGuard)
-  updateEmail(@Body() updateUserDto: UpdateUserDto) {
-    return this.userService.updateEmail(updateUserDto);
+  @UseGuards(userExistGuard, JwtGuard)
+  updateEmail(@Req() req: Request, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.updateEmail(req.user, updateUserDto);
   }
 
   @Patch("update-password")
-  @UseGuards(userExistGuard)
-  async updatePassword(@Body() updateUserDto: UpdateUserDto){
-    return this.userService.updatePassword(updateUserDto)
+  @UseGuards(userExistGuard, JwtGuard)
+  async updatePassword(@Req() req: Request, @Body() updateUserDto: UpdateUserDto){
+    return this.userService.updatePassword(req.user, updateUserDto)
   }
 
   @Delete(':id')

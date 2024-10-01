@@ -9,4 +9,5 @@ export class VerificationResponseDto {
     user?: User
     error?: string
     status?: HttpStatus
+    access_token?: string
 }
