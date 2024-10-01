@@ -8,35 +8,15 @@ import { EmailDto } from 'src/mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
 import { User } from './entities/user.entity';
 import { EmailService } from 'src/mailer/email.service';
-import { JwtService } from '@nestjs/jwt';
+
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly mailerService: EmailService,
-    private readonly jwtService: JwtService
+    private readonly mailerService: EmailService
   ){}
-
-  async create(createUserDto: CreateUserDto): Promise<VerificationResponseDto> {
-    const saltRounds = 10
-    const hashedPassword = await bcrypt.hash(createUserDto.password_hash, saltRounds)
-    const user = this.userRepository.create({
-      name: createUserDto.name,
-      email: createUserDto.email,
-      password_hash: hashedPassword
-    })
-    try {
-      await this.userRepository.insert(user)
-      return {
-        user: user
-      }
-    } 
-    catch (error) {
-      return { message: "Unable to create user"}
-    }
-  }
 
   async findAll(): Promise<User[]> | undefined {
     return await this.userRepository.find()
@@ -69,8 +49,8 @@ export class UserService {
     return user
   }
 
-  async updateName(id: number, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
-    const updatedUser = await this.userRepository.update({user_id: id}, {name: updateUserDto.name})
+  async updateName(data: any, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
+    const updatedUser = await this.userRepository.update({email: data.email}, {name: updateUserDto.name})
     return {
       message: "Name updated successfully!",
       name: updateUserDto.name,
@@ -78,7 +58,7 @@ export class UserService {
     }
   }
 
-  async updateEmail(updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
+  async updateEmail(data: any, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
     const newMailVerification = await this.verifyNewEmail(updateUserDto.new_email)
     if (!newMailVerification) {
       return {
@@ -86,7 +66,7 @@ export class UserService {
       }
     }
 
-    const passwordVerification = await this.verifyPassword(updateUserDto)
+    const passwordVerification = await this.verifyPassword(data, updateUserDto)
     if (!passwordVerification) {
       return {
         message: "Invalid credentials. Please enter valid password."
@@ -104,15 +84,15 @@ export class UserService {
     } 
   }
 
-  async updatePassword(updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
-    const user = await this.findByEmail(updateUserDto.email);
+  async updatePassword(data: any, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
+    const user = await this.findByEmail(data.email);
     if (!user) {
-      return { message: "User not found", email: updateUserDto.email };
+      return { message: "User not found", email: data.email };
     }
   
     const isPasswordValid = await bcrypt.compare(updateUserDto.old_password, user.password_hash);
     if (!isPasswordValid) {
-      return { message: "Previous password is incorrect", email: updateUserDto.email};
+      return { message: "Previous password is incorrect", email: data.email};
     }
   
     try {
@@ -173,8 +153,8 @@ export class UserService {
     }
   }
 
-  async verifyPassword(updateUserDto: UpdateUserDto): Promise<Boolean | VerificationResponseDto>  {
-    const user = await this.findByEmail(updateUserDto.email)
+  async verifyPassword(data: any, updateUserDto: UpdateUserDto): Promise<Boolean | VerificationResponseDto>  {
+    const user = await this.findByEmail(data.email)
     try {
       const verifyPassword = await bcrypt.compare(updateUserDto.old_password, user.password_hash)
       if (!verifyPassword) {
