@@ -10,12 +10,12 @@ export class EmailService {
         private readonly mailerService: MailerService
     ) {}
 
-    async sendVerificationEmail(emailDto: EmailDto) {
-        const to = emailDto.email
-        const subject = emailDto.subject
-        const text = emailDto.text
+    async sendVerificationEmail(obj: EmailDto) {
+        const to = obj.to
+        const subject = obj.subject
+        const text = obj.text
        try {
-        const mailer = await this.mailerService.sendMail(
+        await this.mailerService.sendMail(
             {
                 to,
                 subject,
