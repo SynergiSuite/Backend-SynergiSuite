@@ -1,4 +1,4 @@
-import { Controller , UseGuards, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
+import { Controller, UseGuards, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,7 +10,7 @@ import { Request } from 'express';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Get()
   findAll() {
@@ -25,15 +25,15 @@ export class UserController {
 
   @Post('request-verification')
   @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
-  async requestVerification(@Req() req: Request ,@Body() emailDto ) {
+  async requestVerification(@Req() req: Request, @Body() emailDto) {
     return this.userService.requestVerfication(emailDto)
   }
 
-  @Post('set-verification')
-  @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
-  async setVerification(@Body() updateUserDto: UpdateUserDto ) {
-    return this.userService.setVerification(updateUserDto)
-  }
+  // @Post('set-verification')
+  // @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
+  // async setVerification(@Body() updateUserDto: UpdateUserDto ) {
+  //   return this.userService.setVerification(updateUserDto)
+  // }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
@@ -47,16 +47,17 @@ export class UserController {
   }
 
   @Patch('update-email')
-  @UseGuards(userExistGuard, JwtGuard)
-  updateEmail(@Req() req: Request, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.updateEmail(req.user, updateUserDto);
-  }
+  @UseGuards(JwtGuard)
+  updateEmail(@Req() req: Request, @Body() userObject: UpdateUserDto) {
+    return this.userService.updateEmail(userObject,req.user);
+  };
 
-  @Patch("update-password")
-  @UseGuards(userExistGuard, JwtGuard)
-  async updatePassword(@Req() req: Request, @Body() updateUserDto: UpdateUserDto){
-    return this.userService.updatePassword(req.user, updateUserDto)
-  }
+
+  // @Patch("update-password")
+  // @UseGuards(userExistGuard, JwtGuard)
+  // async updatePassword(@Req() req: Request, @Body() updateUserDto: UpdateUserDto){
+  //   return this.userService.updatePassword(req.user, updateUserDto)
+  // }
 
   @Delete(':id')
   remove(@Param('id') id: number) {
