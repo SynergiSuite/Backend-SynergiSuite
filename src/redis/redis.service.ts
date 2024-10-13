@@ -23,16 +23,22 @@ export class RedisService {
         await this.redisClient.del(key);
     }
 
-    async setWithExpiration(key: string, value: string, ttl: number): Promise<void> {
+    async setWithExpiration(key: string, value: any, ttl: number): Promise<void> {
+        console.log(key, value, ttl)
         await this.redisClient.set(key, value, { EX: ttl });
     }
 
-    async generateCode(email: string): Promise<string> {
+    async generateCode(email: string, newEmail: string): Promise<string> {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const ttl = 3600;
-
-        await this.setWithExpiration(email, otp, ttl);
+        const value = {
+            otp: otp,
+            newEmail: newEmail
+        };
+        const jsonString = JSON.stringify(value);
         
+        await this.setWithExpiration(email, jsonString, ttl);
+
         return otp;
     }
 }
