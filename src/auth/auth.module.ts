@@ -10,6 +10,8 @@ import { User } from 'src/user/entities/user.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmailModule } from 'src/mailer/email.module';
 import { DatabaseModule } from 'src/database/database.module';
+import { RedisModule } from 'src/redis/redis.module';
+import { RedisService } from 'src/redis/redis.service';
 
 @Module({
   imports: [
@@ -21,10 +23,11 @@ import { DatabaseModule } from 'src/database/database.module';
      UserModule,
      TypeOrmModule.forFeature([User]),
      EmailModule,
-     DatabaseModule
+     DatabaseModule,
+     RedisModule
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, UserService],
+  providers: [AuthService, JwtStrategy, UserService, RedisService],
   exports:[JwtModule, PassportModule, AuthService]
 })
 export class AuthModule {}

@@ -7,11 +7,13 @@ import { EmailModule } from 'src/mailer/email.module';
 import { JwtModule } from '@nestjs/jwt';
 import { DatabaseModule } from 'src/database/database.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { RedisService } from 'src/redis/redis.service';
+import { RedisModule } from 'src/redis/redis.module';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), EmailModule, DatabaseModule ],
+  imports: [TypeOrmModule.forFeature([User]), EmailModule, DatabaseModule, RedisModule ],
   controllers: [UserController],
-  providers: [UserService],
+  providers: [UserService, RedisService],
 })
 export class UserModule {}

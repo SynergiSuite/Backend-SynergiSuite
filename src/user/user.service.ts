@@ -8,6 +8,7 @@ import { EmailDto } from 'src/mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
 import { User } from './entities/user.entity';
 import { EmailService } from 'src/mailer/email.service';
+import { RedisService } from 'src/redis/redis.service';
 
 
 @Injectable()
@@ -15,7 +16,8 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly mailerService: EmailService
+    private readonly mailerService: EmailService,
+    private readonly redisService: RedisService
   ) { }
 
   async findAll(): Promise<User[]> | undefined {
@@ -60,11 +62,11 @@ export class UserService {
 
   async updateEmail(data: UpdateUserDto, reqObject: any): Promise<VerificationResponseDto> {
     try {
-      const resp = await this.requestVerfication({ to: reqObject.email, subject: "Change Email Request", text: "" });
+      const resp = await this.requestVerfication({ to: data.updatedEmail, subject: "Change Email Request", text: "" });
       console.log(resp);
       if (resp.status == 200) {
-        await this.userRepository.update({ email: reqObject.email }, { email: data.updatedEmail });
-        return { isVerified: true };
+        // await this.userRepository.update({ email: reqObject.email }, { email: data.updatedEmail });
+        // return { isVerified: true };
       } else {
         return { error: "Update Email Failed" };
       }
@@ -114,9 +116,9 @@ export class UserService {
 
   async requestVerfication(obj: EmailDto): Promise<VerificationResponseDto> {
     try {
-      console.log(obj)
-      const code = Math.floor(1000 + Math.random() * 9000);
-      obj.text = "Your verification code is " + code;
+      const otp = await this.redisService.generateCode(obj.to)
+      console.log(otp)
+      obj.text = "Your verification code is " + otp;
       await this.mailerService.sendVerificationEmail(obj);
       return {
         message: "email sent",
