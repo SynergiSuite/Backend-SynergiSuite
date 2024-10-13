@@ -23,11 +23,11 @@ export class UserController {
     return this.userService.checkVerification(email)
   }
 
-  @Post('request-verification')
-  @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
-  async requestVerification(@Req() req: Request, @Body() emailDto) {
-    return this.userService.requestVerfication(emailDto)
-  }
+  // @Post('request-verification')
+  // @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
+  // async requestVerification(@Req() req: Request, @Body() emailDto) {
+  //   return this.userService.requestVerfication(emailDto,)
+  // }
 
   // @Post('set-verification')
   // @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
@@ -49,7 +49,8 @@ export class UserController {
   @Patch('update-email')
   @UseGuards(JwtGuard)
   updateEmail(@Req() reqObj: Request, @Body() userObject: UpdateUserDto) {
-    return this.userService.updateEmail(userObject, reqObj.user);
+    console.log(userObject)
+    return this.userService.requestEmailCode(userObject, reqObj.user);
   };
 
 

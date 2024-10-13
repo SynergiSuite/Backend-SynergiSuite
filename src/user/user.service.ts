@@ -60,13 +60,14 @@ export class UserService {
     }
   }
 
-  async updateEmail(data: UpdateUserDto, reqObject: any): Promise<VerificationResponseDto> {
+  async requestEmailCode(data: UpdateUserDto, reqObject: any): Promise<VerificationResponseDto> {
     try {
-      const resp = await this.requestVerfication({ to: data.updatedEmail, subject: "Change Email Request", text: "" });
+      const resp = await this.requestVerfication(reqObject.email, { to: data.updatedEmail, subject: "Change Email Request", text: "" });
       console.log(resp);
       if (resp.status == 200) {
-        // await this.userRepository.update({ email: reqObject.email }, { email: data.updatedEmail });
-        // return { isVerified: true };
+        {
+          message: "Please verify your new email"
+        }
       } else {
         return { error: "Update Email Failed" };
       }
@@ -75,49 +76,9 @@ export class UserService {
     }
   }
 
-  //   const passwordVerification = await this.verifyPassword(data, updateUserDto)
-  //   if (!passwordVerification) {
-  //     return {
-  //       message: "Invalid credentials. Please enter valid password."
-  //     }
-  //   }
-  //   try {
-  //     const updatedUser = await this.userRepository.update({email: updateUserDto.email}, {email: updateUserDto.new_email, is_Verified: false})
-  //     return {
-  //       message: "Email updated successfully!"
-  //     }
-  //   } catch (error) {
-  //     return {
-  //       message: "An error occured: " + error.message
-  //     }
-  //   } 
-  // }
-
-  // async updatePassword(data: any, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
-  //   const user = await this.findByEmail(data.email);
-  //   if (!user) {
-  //     return { message: "User not found", email: data.email };
-  //   }
-
-  //   const isPasswordValid = await bcrypt.compare(updateUserDto.old_password, user.password_hash);
-  //   if (!isPasswordValid) {
-  //     return { message: "Previous password is incorrect", email: data.email};
-  //   }
-
-  //   try {
-  //     const hashedNewPassword = await bcrypt.hash(updateUserDto.new_password, 10);
-  //     await this.userRepository.update({ user_id: user.user_id }, { password_hash: hashedNewPassword });
-
-  //     return { message: "Password updated successfully!", email: updateUserDto.email, status: HttpStatus.OK };
-  //   } catch (error) {
-  //     throw new HttpException("Unable to update password", HttpStatus.BAD_REQUEST)
-  //       }
-  // }
-
-  async requestVerfication(obj: EmailDto): Promise<VerificationResponseDto> {
+  async requestVerfication(updatedEmail: string, obj: EmailDto): Promise<VerificationResponseDto> {
     try {
-      const otp = await this.redisService.generateCode(obj.to)
-      console.log(otp)
+      const otp = await this.redisService.generateCode(obj.to, updatedEmail)
       obj.text = "Your verification code is " + otp;
       await this.mailerService.sendVerificationEmail(obj);
       return {
