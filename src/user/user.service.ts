@@ -114,6 +114,7 @@ export class UserService {
 
   async requestVerfication(obj: EmailDto): Promise<VerificationResponseDto> {
     try {
+      console.log(obj)
       const code = Math.floor(1000 + Math.random() * 9000);
       obj.text = "Your verification code is " + code;
       await this.mailerService.sendVerificationEmail(obj);

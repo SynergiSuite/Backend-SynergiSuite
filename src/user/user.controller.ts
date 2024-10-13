@@ -42,14 +42,14 @@ export class UserController {
 
   @Patch('update-name')
   @UseGuards(JwtGuard)
-  updateName(@Req() req: Request, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.updateName(req.user, updateUserDto);
+  updateName(@Req() reqObj: Request, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.updateName(reqObj.user, updateUserDto);
   }
 
   @Patch('update-email')
   @UseGuards(JwtGuard)
-  updateEmail(@Req() req: Request, @Body() userObject: UpdateUserDto) {
-    return this.userService.updateEmail(userObject,req.user);
+  updateEmail(@Req() reqObj: Request, @Body() userObject: UpdateUserDto) {
+    return this.userService.updateEmail(userObject, reqObj.user);
   };
 
 
