@@ -15,8 +15,8 @@ export class RedisService {
         await this.redisClient.set(key, value);
     }
 
-    async get(key: string): Promise<void> {
-        await this.redisClient.get(key);
+    async get(key: string) {
+       return await this.redisClient.get(key);
     }
 
     async del(key: string): Promise<void> {
@@ -28,7 +28,7 @@ export class RedisService {
         await this.redisClient.set(key, value, { EX: ttl });
     }
 
-    async generateCode(email: string, newEmail: string): Promise<string> {
+    async generateCode(newEmail: string, email: string ): Promise<string> {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const ttl = 3600;
         const value = {

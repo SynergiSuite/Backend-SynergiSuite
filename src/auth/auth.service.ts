@@ -1,4 +1,4 @@
-import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { PayloadDto } from './dto/payload.dto';
@@ -10,6 +10,7 @@ import { Repository } from 'typeorm'
 import { UserService } from 'src/user/user.service';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { VerificationResponseDto } from 'src/user/dto/response.dto';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +18,8 @@ export class AuthService {
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly userService: UserService,
-        private jwtService: JwtService
+        private jwtService: JwtService,
+        private redisService: RedisService
     ){}
 
     async create(createUserDto: CreateUserDto): Promise<VerificationResponseDto> {
@@ -67,5 +69,36 @@ export class AuthService {
 
     async validate(payload: any) {
         return { email: payload.email, iat: payload.iat, exp: payload.exp };
+    }
+
+    async getCodeFromRedis(email: string){
+      const data = await this.redisService.get(email);
+      return JSON.parse(data);
+    }
+
+    async verifyEmailCode(code: number, userObject: any) {
+      const data = await this.getCodeFromRedis(userObject.email);
+      if (!data) return {error: 'No data found for this email. Request for a new code.'};
+  
+      if (data.otp !== code.toString()) {
+        throw new UnauthorizedException('Invalid Code');
+      };
+
+      const payload = {email: data.newEmail};
+      const token = await this.jwtService.sign(payload);
+  
+      try {
+        await this.userRepository.update({email: userObject.email}, {email: data.newEmail, is_Verified: true, token_digest: token});
+        await this.redisService.del(userObject.email)
+        return {
+          message: "Email has been updated!",
+          status: HttpStatus.OK,
+          new_email: data.newEmail,
+          access_token: token
+        };
+      } catch (error) {
+        throw new HttpException({error: error.message, message: "unable to update email"}, 400);
+      };
+      
     }
 }

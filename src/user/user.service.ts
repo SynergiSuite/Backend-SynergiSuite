@@ -1,8 +1,6 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Repository } from 'typeorm'
-import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm'
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { EmailDto } from 'src/mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
@@ -22,23 +20,6 @@ export class UserService {
 
   async findAll(): Promise<User[]> | undefined {
     return await this.userRepository.find()
-  }
-
-  async checkVerification(email: string): Promise<VerificationResponseDto> | undefined {
-    const isUserVerfied = await this.userRepository.findOne({ where: { email: email } })
-    if (isUserVerfied.is_Verified) {
-      return {
-        message: "Account is Verified",
-        isVerified: isUserVerfied.is_Verified,
-        user: isUserVerfied
-      }
-    } else {
-      return {
-        message: "Account is not Verified",
-        isVerified: isUserVerfied.is_Verified,
-        user: isUserVerfied
-      }
-    }
   }
 
   async findOne(id: number): Promise<User> {
@@ -63,7 +44,6 @@ export class UserService {
   async requestEmailCode(data: UpdateUserDto, reqObject: any): Promise<VerificationResponseDto> {
     try {
       const resp = await this.requestVerfication(reqObject.email, { to: data.updatedEmail, subject: "Change Email Request", text: "" });
-      console.log(resp);
       if (resp.status == 200) {
         {
           message: "Please verify your new email"
@@ -76,40 +56,19 @@ export class UserService {
     }
   }
 
-  async requestVerfication(updatedEmail: string, obj: EmailDto): Promise<VerificationResponseDto> {
+  async requestVerfication(oldEmail: string, obj: EmailDto): Promise<VerificationResponseDto> {
     try {
-      const otp = await this.redisService.generateCode(obj.to, updatedEmail)
+      const otp = await this.redisService.generateCode(obj.to, oldEmail)
       obj.text = "Your verification code is " + otp;
       await this.mailerService.sendVerificationEmail(obj);
       return {
-        message: "email sent",
+        message: "email sent for verfication",
         status: HttpStatus.OK
       }
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
-  // async setVerification(updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
-  //   try {
-  //     const user = await this.findByEmail(updateUserDto.email)
-  //     const userCode = user.verification_code
-  //     if (userCode === updateUserDto.code) {
-  //       await this.userRepository.update({email: updateUserDto.email}, {is_Verified: true})
-  //       return {
-  //         message: "Account verified successfully",
-  //         user,
-  //         status: HttpStatus.ACCEPTED
-  //       }
-  //     }
-  //   } catch (error) {
-  //     return {
-  //       message: "Invalid request",
-  //       error: error.message,
-  //       status: HttpStatus.BAD_REQUEST
-  //     }
-  //   }
-  // }
 
   remove(id: number) {
     try {
@@ -123,20 +82,14 @@ export class UserService {
     }
   }
 
-  // async verifyPassword(data: any, updateUserDto: UpdateUserDto): Promise<Boolean | VerificationResponseDto>  {
-  //   const user = await this.findByEmail(data.email)
-  //   try {
-  //     const verifyPassword = await bcrypt.compare(updateUserDto.old_password, user.password_hash)
-  //     if (!verifyPassword) {
-  //       return false
-  //     }
-  //     return {
-  //       user: user
-  //     }
-  //   } catch (error) {
-  //     throw new HttpException("Invalid Credentials", HttpStatus.BAD_REQUEST);
+  async isUserverified(email: string) {
+    const user = await this.findByEmail(email);
 
-  //   }
-  // }
+    if (!user.is_Verified) {
+      return false;
+    };
+
+    return true;
+  }
 }
 

@@ -1,12 +1,9 @@
 import { Controller, UseGuards, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { EmailDto } from 'src/mailer/dto/email.dto';
-import { isUserVerfied, userAlreadyExistGuard, userExistGuard } from './user.guard';
-import { console } from 'inspector';
 import { JwtGuard } from 'src/shared/auth.guard';
 import { Request } from 'express';
+import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
 
 @Controller('user')
 export class UserController {
@@ -17,39 +14,15 @@ export class UserController {
     return this.userService.findAll();
   }
 
-  @Get('check_verification')
-  @UseGuards(userExistGuard, JwtGuard)
-  async checkVerification(@Param('email') email: string) {
-    return this.userService.checkVerification(email)
-  }
-
-  // @Post('request-verification')
-  // @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
-  // async requestVerification(@Req() req: Request, @Body() emailDto) {
-  //   return this.userService.requestVerfication(emailDto,)
-  // }
-
-  // @Post('set-verification')
-  // @UseGuards(userExistGuard, isUserVerfied, JwtGuard)
-  // async setVerification(@Body() updateUserDto: UpdateUserDto ) {
-  //   return this.userService.setVerification(updateUserDto)
-  // }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
-  }
-
   @Patch('update-name')
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtWithVerificationGuard)
   updateName(@Req() reqObj: Request, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.updateName(reqObj.user, updateUserDto);
   }
 
-  @Patch('update-email')
+  @Post('request-verify-email')
   @UseGuards(JwtGuard)
-  updateEmail(@Req() reqObj: Request, @Body() userObject: UpdateUserDto) {
-    console.log(userObject)
+  requestUpdateEmail(@Req() reqObj: Request, @Body() userObject: UpdateUserDto) {
     return this.userService.requestEmailCode(userObject, reqObj.user);
   };
 
