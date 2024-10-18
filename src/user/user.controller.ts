@@ -20,10 +20,16 @@ export class UserController {
     return this.userService.updateName(reqObj.user, updateUserDto);
   }
 
-  @Post('request-verify-email')
+  @Post('request-change-email')
   @UseGuards(JwtGuard)
   requestUpdateEmail(@Req() reqObj: Request, @Body() userObject: UpdateUserDto) {
-    return this.userService.requestEmailCode(userObject, reqObj.user);
+    return this.userService.requestEmailChangeCode(userObject, reqObj.user);
+  };
+
+  @Post('request-verify-email')
+  @UseGuards(JwtGuard)
+  requestVerification(@Req() reqObj: Request) {
+    return this.userService.requestEmailVerification(reqObj.user);
   };
 
 

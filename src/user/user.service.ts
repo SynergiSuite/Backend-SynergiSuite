@@ -33,7 +33,7 @@ export class UserService {
   }
 
   async updateName(data: any, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
-    const updatedUser = await this.userRepository.update({ email: data.email }, { name: updateUserDto.name })
+    const updatedUser = await this.userRepository.update({ email: data.email }, { name: updateUserDto.updatedName })
     return {
       message: "Name updated successfully!",
       name: updateUserDto.name,
@@ -41,7 +41,7 @@ export class UserService {
     }
   }
 
-  async requestEmailCode(data: UpdateUserDto, reqObject: any): Promise<VerificationResponseDto> {
+  async requestEmailChangeCode(data: UpdateUserDto, reqObject: any): Promise<VerificationResponseDto> {
     try {
       const resp = await this.requestVerfication(reqObject.email, { to: data.updatedEmail, subject: "Change Email Request", text: "" });
       if (resp.status == 200) {
@@ -58,7 +58,7 @@ export class UserService {
 
   async requestVerfication(oldEmail: string, obj: EmailDto): Promise<VerificationResponseDto> {
     try {
-      const otp = await this.redisService.generateCode(obj.to, oldEmail)
+      const otp = await this.redisService.generateUpdateEmailCode(obj.to, oldEmail)
       obj.text = "Your verification code is " + otp;
       await this.mailerService.sendVerificationEmail(obj);
       return {
@@ -67,6 +67,20 @@ export class UserService {
       }
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async requestEmailVerification(data: any) {
+    try {
+      const otp = await this.redisService.generateVerificationCode(data.email)
+      const obj = { to: data.email, subject: "Please verify Your Email!", text: "Your email verification code is " + otp + " This code is only valid for 3 hours." }
+      await this.mailerService.sendVerificationEmail(obj)
+      return {
+        message: "Email sent for verification.",
+        status: HttpStatus.OK
+      }
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
     }
   }
 

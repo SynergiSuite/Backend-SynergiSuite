@@ -24,11 +24,11 @@ export class RedisService {
     }
 
     async setWithExpiration(key: string, value: any, ttl: number): Promise<void> {
-        console.log(key, value, ttl)
+        // console.log(key, value, ttl)
         await this.redisClient.set(key, value, { EX: ttl });
     }
 
-    async generateCode(newEmail: string, email: string ): Promise<string> {
+    async generateUpdateEmailCode(newEmail: string, email: string ): Promise<string> {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const ttl = 3600;
         const value = {
@@ -39,6 +39,17 @@ export class RedisService {
         
         await this.setWithExpiration(email, jsonString, ttl);
 
+        return otp;
+    }
+
+    async generateVerificationCode(email: string) {
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const ttl = 3600;
+        const value = {
+            otp: otp
+        };
+        const jsonString = JSON.stringify(value);
+        await this.setWithExpiration(email, jsonString, ttl);
         return otp;
     }
 }

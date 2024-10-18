@@ -5,6 +5,7 @@ import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { userAlreadyExistGuard, userExistGuard } from 'src/user/user.guard';
 import { Request } from 'express';
 import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
+import { JwtGuard } from 'src/shared/auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -23,8 +24,14 @@ export class AuthController {
   }
 
   @Patch('update-email')
-  @UseGuards(JwtWithVerificationGuard)
+  @UseGuards(JwtGuard)
   updateEmail(@Req()reqObj: Request, @Body('userCode') userCode: number) {
-    return this.authService.verifyEmailCode(userCode, reqObj.user);
+    return this.authService.verifyUpdateEmailCode(userCode, reqObj.user);
+  }
+
+  @Patch('verify-email')
+  @UseGuards(JwtGuard)
+  verifyEmail(@Req() reqObj: Request, @Body('userCode') userCode: number) {
+    return this.authService.verifyEmailCode(reqObj.user, userCode)
   }
 }

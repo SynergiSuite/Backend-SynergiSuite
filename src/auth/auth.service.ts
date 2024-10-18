@@ -76,7 +76,7 @@ export class AuthService {
       return JSON.parse(data);
     }
 
-    async verifyEmailCode(code: number, userObject: any) {
+    async verifyUpdateEmailCode(code: number, userObject: any) {
       const data = await this.getCodeFromRedis(userObject.email);
       if (!data) return {error: 'No data found for this email. Request for a new code.'};
   
@@ -99,6 +99,26 @@ export class AuthService {
       } catch (error) {
         throw new HttpException({error: error.message, message: "unable to update email"}, 400);
       };
-      
+    }
+
+    async verifyEmailCode(data: any, userCode: number) {
+      const redisData = await this.getCodeFromRedis(data.email);
+      if (!redisData) return { error: "No data found for this email. Request for a new code."};
+
+      if (redisData.otp !== userCode.toString()) {
+        throw new UnauthorizedException('Invalid Code')
+      };
+
+      try {
+        await this.userRepository.update({email: data.email}, {is_Verified: true})
+        await this.redisService.del(data.email)
+        return {
+          message: "User successfully verified",
+          status: HttpStatus.ACCEPTED,
+          email: data.email
+        }
+      } catch (error) {
+        throw new HttpException({error: error.message, message: "Unable to verify email"}, 400);
+      }
     }
 }
