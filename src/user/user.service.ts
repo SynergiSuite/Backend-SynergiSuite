@@ -84,9 +84,9 @@ export class UserService {
     }
   }
 
-  remove(id: number) {
+  async remove(id: number) {
     try {
-      const deletedUser = this.userRepository.delete(id)
+      await this.userRepository.delete(id);
       return {
         message: "Account removed successfully!",
         status: HttpStatus.OK

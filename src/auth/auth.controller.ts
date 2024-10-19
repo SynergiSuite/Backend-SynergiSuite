@@ -9,7 +9,7 @@ import { JwtGuard } from 'src/shared/auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('/new')
   @UseGuards(userAlreadyExistGuard)
@@ -19,13 +19,13 @@ export class AuthController {
 
   @Post("/login")
   @UseGuards(userExistGuard)
-  async login (@Body() authPayload: PayloadDto) {
+  async login(@Body() authPayload: PayloadDto) {
     return await this.authService.validateSession(authPayload)
   }
 
   @Patch('update-email')
   @UseGuards(JwtGuard)
-  updateEmail(@Req()reqObj: Request, @Body('userCode') userCode: number) {
+  updateEmail(@Req() reqObj: Request, @Body('userCode') userCode: number) {
     return this.authService.verifyUpdateEmailCode(userCode, reqObj.user);
   }
 
@@ -33,5 +33,12 @@ export class AuthController {
   @UseGuards(JwtGuard)
   verifyEmail(@Req() reqObj: Request, @Body('userCode') userCode: number) {
     return this.authService.verifyEmailCode(reqObj.user, userCode)
+  };
+
+  @Patch('refresh-token')
+  @UseGuards(JwtGuard)
+  refreshToken(@Req() reqObj: Request, @Body('token') token: string) {
+    return this.authService.generateRefreshAccessToken(token, reqObj.user);
   }
+
 }
