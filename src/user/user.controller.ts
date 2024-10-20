@@ -4,6 +4,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtGuard } from 'src/shared/auth.guard';
 import { Request } from 'express';
 import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
+import { UpdatePasswordDto } from './dto/update-password.dto';
+import { userExistGuard } from './user.guard';
 
 @Controller('user')
 export class UserController {
@@ -12,13 +14,13 @@ export class UserController {
   @Get()
   findAll() {
     return this.userService.findAll();
-  }
+  };
 
   @Patch('update-name')
   @UseGuards(JwtWithVerificationGuard)
   updateName(@Req() reqObj: Request, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.updateName(reqObj.user, updateUserDto);
-  }
+  };
 
   @Post('request-change-email')
   @UseGuards(JwtGuard)
@@ -32,15 +34,21 @@ export class UserController {
     return this.userService.requestEmailVerification(reqObj.user);
   };
 
+  @Post('request-forgot-password')
+  @UseGuards(userExistGuard)
+  async requestForgotPasswordCode(@Body('email') dataObj: string) {
+    return await this.userService.requestForgotPasswordCode(dataObj);
+  };
 
-  // @Patch("update-password")
-  // @UseGuards(userExistGuard, JwtGuard)
-  // async updatePassword(@Req() req: Request, @Body() updateUserDto: UpdateUserDto){
-  //   return this.userService.updatePassword(req.user, updateUserDto)
-  // }
+
+  @Patch("update-password")
+  @UseGuards(JwtWithVerificationGuard)
+  async updatePassword(@Req() req: Request, @Body() dataObj: UpdatePasswordDto){
+    return this.userService.updatePassword(req.user, dataObj)
+  }
 
   @Delete(':id')
   remove(@Param('id') id: number) {
     return this.userService.remove(id);
-  }
+  };
 }

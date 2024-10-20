@@ -18,7 +18,7 @@ import { RedisService } from 'src/redis/redis.service';
     PassportModule.register({ defaultStrategy: 'jwt'}),
     JwtModule.register({
       secret: 'synergi_user',
-      signOptions: { expiresIn: '1d' }
+      signOptions: { expiresIn: '4h' }
     }),
      UserModule,
      TypeOrmModule.forFeature([User]),

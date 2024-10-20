@@ -1,12 +1,14 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Repository } from 'typeorm'
 import { InjectRepository } from '@nestjs/typeorm'
+import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { EmailDto } from 'src/mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
 import { User } from './entities/user.entity';
 import { EmailService } from 'src/mailer/email.service';
 import { RedisService } from 'src/redis/redis.service';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 
 @Injectable()
@@ -23,21 +25,26 @@ export class UserService {
   }
 
   async findOne(id: number): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { user_id: id } })
-    return user
+    return await this.userRepository.findOne({ where: { user_id: id } });
   }
 
   async findByEmail(email: string): Promise<User> | undefined {
-    const user = await this.userRepository.findOne({ where: { email } })
-    return user
+    return await this.userRepository.findOne({ where: { email } });
   }
 
   async updateName(data: any, updateUserDto: UpdateUserDto): Promise<VerificationResponseDto> {
-    const updatedUser = await this.userRepository.update({ email: data.email }, { name: updateUserDto.updatedName })
-    return {
-      message: "Name updated successfully!",
-      name: updateUserDto.name,
-      email: updateUserDto.email
+    try {
+      await this.userRepository.update({ email: data.email }, { name: updateUserDto.updatedName });
+      return {
+        message: "Name updated successfully!",
+        name: updateUserDto.name,
+        email: updateUserDto.email
+      };
+    } catch (error) {
+      return {
+        message: error.message,
+        status: HttpStatus.BAD_REQUEST
+      };
     }
   }
 
@@ -47,7 +54,7 @@ export class UserService {
       if (resp.status == 200) {
         {
           message: "Please verify your new email"
-        }
+        };
       } else {
         return { error: "Update Email Failed" };
       }
@@ -58,13 +65,13 @@ export class UserService {
 
   async requestVerfication(oldEmail: string, obj: EmailDto): Promise<VerificationResponseDto> {
     try {
-      const otp = await this.redisService.generateUpdateEmailCode(obj.to, oldEmail)
+      const otp = await this.redisService.generateUpdateEmailCode(obj.to, oldEmail);
       obj.text = "Your verification code is " + otp;
       await this.mailerService.sendVerificationEmail(obj);
       return {
         message: "email sent for verfication",
         status: HttpStatus.OK
-      }
+      };
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -81,6 +88,44 @@ export class UserService {
       }
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+    }
+  }
+  
+  async updatePassword(data: any, dataObj: UpdatePasswordDto) {
+    const user = await this.findByEmail(data.email)
+    const validate = await bcrypt.compare(dataObj.oldPassword, user.password_hash)
+    if(!validate) {
+      throw new UnauthorizedException('Previous Password is invalid')
+    }
+
+    try {
+      const hashedPassword = await bcrypt.hash(dataObj.updatedPassword, 10)
+      await this.userRepository.update({email: data.email}, {password_hash: hashedPassword})
+
+      return {
+        message: "Password has been updated successfully!",
+        status: HttpStatus.OK
+      }
+    } catch (error) {
+      throw new HttpException({message: error.message}, 400)
+    }
+  }
+
+  async requestForgotPasswordCode(email: string) {
+    const otp = await this.redisService.generateVerificationCode(email);
+    const obj = {to: email, subject: "Did you forgot your password?", text: "We got you covered. Enter this coed to change your password " + otp };
+
+    try {
+      await this.mailerService.sendVerificationEmail(obj);
+      return {
+        message: "Email has been sent. Check your inbox!",
+        status: HttpStatus.CONTINUE
+      }
+    } catch (error) {
+      return {
+        message: error.message,
+        status: HttpStatus.BAD_REQUEST
+      }
     }
   }
 
