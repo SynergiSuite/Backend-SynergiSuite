@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { PayloadDto } from './dto/payload.dto';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
@@ -6,6 +6,7 @@ import { userAlreadyExistGuard, userExistGuard } from 'src/user/user.guard';
 import { Request } from 'express';
 import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
 import { JwtGuard } from 'src/shared/auth.guard';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -14,24 +15,36 @@ export class AuthController {
   @Post('/new')
   @UseGuards(userAlreadyExistGuard)
   async create(@Body() createUserDto: CreateUserDto) {
-    return this.authService.create(createUserDto);
+    return await this.authService.create(createUserDto);
   }
 
   @Post("/login")
   @UseGuards(userExistGuard)
   async login (@Body() authPayload: PayloadDto) {
-    return await this.authService.validateSession(authPayload)
+    return await this.authService.validateSession(authPayload);
   }
 
   @Patch('update-email')
   @UseGuards(JwtGuard)
-  updateEmail(@Req()reqObj: Request, @Body('userCode') userCode: number) {
-    return this.authService.verifyUpdateEmailCode(userCode, reqObj.user);
+  async updateEmail(@Req()reqObj: Request, @Body('userCode') userCode: number) {
+    return await this.authService.verifyUpdateEmailCode(userCode, reqObj.user);
   }
 
   @Patch('verify-email')
   @UseGuards(JwtGuard)
-  verifyEmail(@Req() reqObj: Request, @Body('userCode') userCode: number) {
-    return this.authService.verifyEmailCode(reqObj.user, userCode)
+  async verifyEmail(@Req() reqObj: Request, @Body('userCode') userCode: number) {
+    return await this.authService.verifyEmailCode(reqObj.user, userCode);
   }
+
+  @Patch('forgot-password')
+  async forgotPassword(@Body() data: ForgotPasswordDto) {
+    return await this.authService.forgotPassword(data);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtGuard)
+  async logout(@Req() data: any) {
+    return await this.authService.logout(data.user);
+  }
+
 }
