@@ -90,7 +90,7 @@ export class UserService {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
     }
   }
-
+  
   async updatePassword(data: any, dataObj: UpdatePasswordDto) {
     const user = await this.findByEmail(data.email)
     const validate = await bcrypt.compare(dataObj.oldPassword, user.password_hash)
@@ -129,9 +129,9 @@ export class UserService {
     }
   }
 
-  remove(id: number) {
+  async remove(id: number) {
     try {
-      const deletedUser = this.userRepository.delete(id)
+      await this.userRepository.delete(id);
       return {
         message: "Account removed successfully!",
         status: HttpStatus.OK

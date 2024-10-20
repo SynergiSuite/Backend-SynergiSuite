@@ -10,7 +10,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('/new')
   @UseGuards(userAlreadyExistGuard)
@@ -35,6 +35,12 @@ export class AuthController {
   async verifyEmail(@Req() reqObj: Request, @Body('userCode') userCode: number) {
     return await this.authService.verifyEmailCode(reqObj.user, userCode);
   }
+  
+  @Patch('refresh-token')
+  @UseGuards(JwtGuard)
+  refreshToken(@Req() reqObj: Request, @Body('token') token: string) {
+    return this.authService.generateRefreshAccessToken(token, reqObj.user);
+  }
 
   @Patch('forgot-password')
   async forgotPassword(@Body() data: ForgotPasswordDto) {
@@ -46,5 +52,4 @@ export class AuthController {
   async logout(@Req() data: any) {
     return await this.authService.logout(data.user);
   }
-
 }
