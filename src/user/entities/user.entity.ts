@@ -25,11 +25,8 @@ export class User {
     @Column({nullable: false})
     password_hash: string
 
-    @Column({nullable: false})
-    token_digest: string
-
     @Column({nullable: true})
-    verification_code: number
+    token_digest: string
 
     @Column({ nullable: false, default: false})
     is_Verified: boolean
