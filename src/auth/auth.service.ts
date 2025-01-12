@@ -76,7 +76,7 @@ export class AuthService {
       throw new HttpException('Invalid Credentails', 401);
     }
   }
-
+  
   async validate(payload: any) {
     return { email: payload.email, iat: payload.iat, exp: payload.exp };
   }
@@ -181,6 +181,28 @@ export class AuthService {
       throw new HttpException(error.emssage, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+      
+  async generateRefreshAccessToken(token: string, userObj: any) {
+    try {
+      const existingToken = await this.userRepository.findOne({ where: { token_digest: token } });
+      const decode = await this.validate(token);
+      if (!existingToken && decode.exp) {
+        console.error("Token not found from db...");
+      };
+
+      const user = await this.userRepository.findOne({ where: { email: userObj.email } });
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      };
+
+      const refreshToken = this.jwtService.sign({ email: userObj.email });
+      await this.userRepository.update({ email: userObj.email }, { is_Verified: true, token_digest: refreshToken });
+      return refreshToken;
+
+    } catch (error) {
+      console.error(error.message);
+    }
+  };
 
   async logout(data: any) {
     try {
