@@ -1,5 +1,5 @@
 export class ForgotPasswordDto {
-    userCode: number
-    updatedPassword: string
-    email: string
+  userCode: number;
+  updatedPassword: string;
+  email: string;
 }

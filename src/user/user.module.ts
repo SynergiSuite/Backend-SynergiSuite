@@ -8,9 +8,13 @@ import { DatabaseModule } from 'src/database/database.module';
 import { RedisService } from 'src/redis/redis.service';
 import { RedisModule } from 'src/redis/redis.module';
 
-
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), EmailModule, DatabaseModule, RedisModule],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    EmailModule,
+    DatabaseModule,
+    RedisModule,
+  ],
   controllers: [UserController],
   providers: [UserService, RedisService],
 })
