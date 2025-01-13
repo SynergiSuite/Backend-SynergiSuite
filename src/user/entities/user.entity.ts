@@ -1,5 +1,12 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { IsInt, MinLength, MaxLength, IsEmail } from 'class-validator';
+import { Business } from 'src/business/entities/business.entity';
 
 @Entity({ name: 'user' })
 export class User {
@@ -29,4 +36,7 @@ export class User {
 
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   registration_date: Date;
+
+  @OneToOne(() => Business, (business) => business.user, { cascade: true })
+  business: Business;
 }
