@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
+import { Category } from 'src/category/entities/category.entity';
 
 @Entity({ name: 'business' })
 export class Business {
@@ -21,19 +22,16 @@ export class Business {
   name: string;
 
   @Column()
-  @IsString()
-  @MinLength(3, { message: 'Name should atleast be 3 letters long.' })
-  @MaxLength(50, { message: 'Name can not exceed limit of 50 characters' })
-  category: string;
-
-  @Column()
   @IsInt()
   number_of_employees: number;
 
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   registration_date: Date;
 
-  @OneToOne(() => User, (user) => user.business, { onDelete: 'CASCADE' })
+  @OneToOne(() => Category, (category) => category.business)
   @JoinColumn()
+  category: Category;
+
+  @OneToOne(() => User, (user) => user.business, { onDelete: 'CASCADE' })
   user: User;
 }

@@ -38,5 +38,6 @@ export class User {
   registration_date: Date;
 
   @OneToOne(() => Business, (business) => business.user, { cascade: true })
+  @JoinColumn()
   business: Business;
 }
