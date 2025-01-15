@@ -14,11 +14,18 @@ export class EmailService {
     const to = obj.to;
     const subject = obj.subject;
     const text = obj.text;
+    const name = obj.name;
+    const heading = obj.heading;
     try {
       await this.mailerService.sendMail({
         to,
         subject,
-        text,
+        template: 'email',
+        context: {
+          name,
+          heading,
+          text,
+        },
       });
       return true;
     } catch (error) {
