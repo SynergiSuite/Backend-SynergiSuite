@@ -9,7 +9,7 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { Category } from 'src/category/entities/category.entity';
 
-@Entity({ name: 'business' })
+@Entity({ name: 'businesses' })
 export class Business {
   @PrimaryGeneratedColumn()
   @IsInt()
@@ -29,9 +29,9 @@ export class Business {
   registration_date: Date;
 
   @OneToOne(() => Category, (category) => category.business)
-  @JoinColumn()
+  @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @OneToOne(() => User, (user) => user.business, { onDelete: 'CASCADE' })
+  @OneToOne(() => User, (user) => user.business)
   user: User;
 }

@@ -120,7 +120,7 @@ export class UserService {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-  
+
   async updatePassword(data: any, dataObj: UpdatePasswordDto) {
     const user = await this.findByEmail(data.email);
     const validate = await bcrypt.compare(
@@ -172,7 +172,6 @@ export class UserService {
 
   async remove(id: number) {
     try {
-
       await this.userRepository.delete(id);
       return {
         message: 'Account removed successfully!',
@@ -188,6 +187,24 @@ export class UserService {
 
   async isUserverified(email: string) {
     const user = await this.findByEmail(email);
+
+    if (!user.is_Verified) {
+      return false;
+    }
+
+    return true;
+  }
+
+  async isUserActive(email: string) {
+    const user = await this.findByEmail(email);
+
+    if (!user.business) {
+      return false;
+    }
+
+    if (!user.role) {
+      return false;
+    }
 
     if (!user.is_Verified) {
       return false;

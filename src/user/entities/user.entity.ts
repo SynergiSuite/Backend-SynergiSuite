@@ -7,8 +7,9 @@ import {
 } from 'typeorm';
 import { IsInt, MinLength, MaxLength, IsEmail } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
+import { Role } from 'src/roles/entities/role.entity';
 
-@Entity({ name: 'user' })
+@Entity({ name: 'users' })
 export class User {
   @PrimaryGeneratedColumn()
   @IsInt()
@@ -37,7 +38,11 @@ export class User {
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   registration_date: Date;
 
-  @OneToOne(() => Business, (business) => business.user, { cascade: true })
-  @JoinColumn()
+  @OneToOne(() => Business, (business) => business.user)
+  @JoinColumn({ name: 'business_id' })
   business: Business;
+
+  @OneToOne(() => Role, (roles) => roles.user)
+  @JoinColumn({ name: 'role_id' })
+  role: Role;
 }
