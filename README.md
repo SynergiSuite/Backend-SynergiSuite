@@ -39,15 +39,36 @@ To start this application the files and working will be provided in this documen
 ## Project setup
 
 1. Download Node js
-2. Downlaod NestJS
-3. Setup PostgreSQL
-4. Downalod Redis
-5. Set up Git
-6. Clone this repo
+   from: (https://nodejs.org/en/download)
+3. Downlaod NestJS
+   ```bash
+   npm i -g @nestjs/cli
+   ```
+4. Set up Git
+   ```bash
+   ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+   Get-Service -Name ssh-agent | Set-Service -StartupType Manual
+   Start-Service ssh-agent
+   ssh-add c:/Users/YOU/.ssh/id_rsa.pub
+   ```
 
-```bash
-$ npm install
-```
+5. Clone Repository
+   ```bash
+   git clone [url]
+   ```
+   
+   ```bash
+   git checkout [branch]
+   ```
+   
+   ```bash
+   git pull
+   ```
+6. Install dependencies
+
+   ```bash
+   $ npm install
+   ```
 
 ## Compile and run the project
 
