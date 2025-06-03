@@ -22,11 +22,28 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# Backend-SynergiSuite
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This is the backend application for the SynergiSuite application. This project is based upon NestJS. that will include all of the APIs and logical working behind the application.
+To start this application the files and working will be provided in this document
+
+## Technologies Used
+
+   1. NestJs (https://docs.nestjs.com/)
+   2. Node  (https://nodejs.org/docs/latest-v20.x/api/index.html)
+   3. Redis (https://redis.io/docs/latest/)
+   4. JWT         (https://jwt.io/introduction)
+   5. PostgreSQL  (https://www.postgresql.org/docs/)
+   6. Mailtrap (https://mailtrap.io/)
 
 ## Project setup
+
+1. Download Node js
+2. Downlaod NestJS
+3. Setup PostgreSQL
+4. Downalod Redis
+5. Set up Git
+6. Clone this repo
 
 ```bash
 $ npm install
