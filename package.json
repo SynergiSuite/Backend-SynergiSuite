@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@css-inline/css-inline-darwin-arm64": "^0.14.3",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.3",
@@ -33,6 +34,7 @@
     "@types/passport-jwt": "^4.0.1",
     "bcrypt": "^5.1.1",
     "class-validator": "^0.14.1",
+    "ejs": "^3.1.10",
     "nodemailer": "^6.9.15",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

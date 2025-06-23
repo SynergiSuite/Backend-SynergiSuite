@@ -67,6 +67,8 @@ export class UserService {
         to: data.updatedEmail,
         subject: 'Change Email Request',
         text: '',
+        name: '',
+        heading: '',
       });
       if (resp.status == 200) {
         return {
@@ -84,12 +86,15 @@ export class UserService {
     oldEmail: string,
     obj: EmailDto,
   ): Promise<VerificationResponseDto> {
+    const user = await this.findByEmail(oldEmail);
     try {
       const otp = await this.redisService.generateUpdateEmailCode(
         obj.to,
         oldEmail,
       );
       obj.text = 'Your verification code is ' + otp;
+      obj.name = user.name;
+      obj.heading = 'Lets change your email';
       await this.mailerService.sendVerificationEmail(obj);
       return {
         message: 'email sent for verfication',
@@ -101,16 +106,17 @@ export class UserService {
   }
 
   async requestEmailVerification(data: any) {
+    const user = await this.findByEmail(data.email);
     try {
       const otp = await this.redisService.generateVerificationCode(data.email);
       const obj = {
         to: data.email,
         subject: 'Please verify Your Email!',
-        text:
-          'Your email verification code is ' +
-          otp +
-          ' This code is only valid for 3 hours.',
+        text: 'Your email verification code is ' + otp,
+        name: user.name,
+        heading: 'Lets verify your email',
       };
+
       await this.mailerService.sendVerificationEmail(obj);
       return {
         message: 'Email sent for verification.',
@@ -120,7 +126,7 @@ export class UserService {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
-  
+
   async updatePassword(data: any, dataObj: UpdatePasswordDto) {
     const user = await this.findByEmail(data.email);
     const validate = await bcrypt.compare(
@@ -148,12 +154,15 @@ export class UserService {
   }
 
   async requestForgotPasswordCode(email: string) {
+    const user = await this.findByEmail(email);
     const otp = await this.redisService.generateVerificationCode(email);
     const obj = {
       to: email,
       subject: 'Did you forgot your password?',
       text:
-        'We got you covered. Enter this coed to change your password ' + otp,
+        'We got you covered. Enter this code to change your password ' + otp,
+      name: user.name,
+      heading: 'Lets retrieve your account.',
     };
 
     try {
@@ -172,7 +181,6 @@ export class UserService {
 
   async remove(id: number) {
     try {
-
       await this.userRepository.delete(id);
       return {
         message: 'Account removed successfully!',
@@ -188,6 +196,24 @@ export class UserService {
 
   async isUserverified(email: string) {
     const user = await this.findByEmail(email);
+
+    if (!user.is_Verified) {
+      return false;
+    }
+
+    return true;
+  }
+
+  async isUserActive(email: string) {
+    const user = await this.findByEmail(email);
+
+    if (!user.business) {
+      return false;
+    }
+
+    if (!user.role) {
+      return false;
+    }
 
     if (!user.is_Verified) {
       return false;
