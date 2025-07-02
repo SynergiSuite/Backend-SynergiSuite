@@ -6,18 +6,31 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
+import { Request } from 'express';
+import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
+import { InviteDto } from './dto/send-invitation.dto';
+import { BusinessGuard } from './guards/user-business.guard';
 
 @Controller('business')
 export class BusinessController {
   constructor(private readonly businessService: BusinessService) {}
 
-  @Post()
-  create(@Body() createBusinessDto: CreateBusinessDto) {
-    return this.businessService.create(createBusinessDto);
+  @Post("/register")
+  @UseGuards(JwtWithVerificationGuard)
+  create(@Req() reqObj: Request, @Body() createBusinessDto: CreateBusinessDto) {
+    return this.businessService.create(reqObj.user, createBusinessDto);
+  }
+
+  @Post("/invite")
+  @UseGuards(BusinessGuard)
+  sendInvitation(@Req() reqObj: Request, @Body() inviteDto: InviteDto) {
+    return this.businessService.sendInvitation(reqObj.user, inviteDto);
   }
 
   @Get()

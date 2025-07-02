@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from 'Typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'Typeorm';
 import { IsInt, IsString, MaxLength, MinLength } from 'class-validator';
 import { User } from 'src/user/entities/user.entity';
 
@@ -17,6 +17,6 @@ export class Role {
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 
-  @OneToOne(() => User, (user) => user.role)
-  user: User;
+  @OneToMany(() => User, (user) => user.role)
+  users: User[];
 }

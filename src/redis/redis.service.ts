@@ -24,7 +24,6 @@ export class RedisService {
   }
 
   async setWithExpiration(key: string, value: any, ttl: number): Promise<void> {
-    // console.log(key, value, ttl)
     await this.redisClient.set(key, value, { EX: ttl });
   }
 

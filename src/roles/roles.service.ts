@@ -32,7 +32,7 @@ export class RolesService {
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} role`;
+    return this.rolesRepository.findOne({ where: {id: id}});
   }
 
   update(id: number, updateRoleDto: UpdateRoleDto) {

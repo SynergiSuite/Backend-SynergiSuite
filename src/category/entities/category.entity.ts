@@ -1,4 +1,4 @@
-import { Column, PrimaryGeneratedColumn, OneToOne, Entity } from 'typeorm';
+import { Column, PrimaryGeneratedColumn, OneToOne, Entity, OneToMany } from 'typeorm';
 import { IsInt, IsString } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
 
@@ -15,6 +15,6 @@ export class Category {
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   registration_date: Date;
 
-  @OneToOne(() => Business, (business) => business.category)
-  business: Business;
+  @OneToMany(() => Business, (business) => business.category)
+  business: Business[];
 }
