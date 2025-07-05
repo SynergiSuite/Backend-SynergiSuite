@@ -5,4 +5,7 @@ export class EmailDto {
   text: string;
   name: string;
   heading: string;
+  invited_by?: string;
+  invited_bys_role?: string;
+  business?: string;
 }

@@ -16,6 +16,7 @@ import { Request } from 'express';
 import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
 import { InviteDto } from './dto/send-invitation.dto';
 import { BusinessGuard } from './guards/user-business.guard';
+import { AlreadyHasBusinessGuard } from './guards/already-has-business.guard';
 
 @Controller('business')
 export class BusinessController {
@@ -31,6 +32,12 @@ export class BusinessController {
   @UseGuards(BusinessGuard)
   sendInvitation(@Req() reqObj: Request, @Body() inviteDto: InviteDto) {
     return this.businessService.sendInvitation(reqObj.user, inviteDto);
+  }
+
+  @Post("/join-business")
+  @UseGuards(AlreadyHasBusinessGuard)
+  acceptInvitation(@Req() reqObj: Request, @Body('token') token: string){
+    return this.businessService.acceptInvitation(reqObj.user, token)
   }
 
   @Get()

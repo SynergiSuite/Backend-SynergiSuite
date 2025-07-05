@@ -17,6 +17,7 @@ import { RedisService } from 'src/redis/redis.service';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { RolesService } from 'src/roles/roles.service';
 import { Business } from 'src/business/entities/business.entity';
+import { Role } from 'src/roles/entities/role.entity';
 
 @Injectable()
 export class UserService {
@@ -38,6 +39,10 @@ export class UserService {
 
   async findByEmail(email: string): Promise<User> | undefined {
     return await this.userRepository.findOne({ where: { email } });
+  }
+
+  async findUserAndBusinessByEmail(email: string): Promise<User> | undefined {
+    return await this.userRepository.findOne({where: {email}, relations: ['business', 'role']})
   }
 
   async updateName(
@@ -245,5 +250,19 @@ export class UserService {
       return false;
     }
     return !!user.business && user.role?.id === role.id;
-  }
+  };
+
+  async setInvitedUser(invited: string, invitedBy: string, roleId: number){
+    try {
+      const invitedUser = await this.findUserAndBusinessByEmail(invited);
+      const invitingUser = await this.findUserAndBusinessByEmail(invitedBy);
+      const role = await this.roleService.findOne(roleId);
+      invitedUser.business = invitingUser.business;
+      invitedUser.role =  role;
+      return await this.userRepository.save(invitedUser);
+
+    } catch (error) {
+      throw new HttpException("Something went wrong: " + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  };
 }

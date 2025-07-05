@@ -20,7 +20,7 @@ export class EmailService {
       await this.mailerService.sendMail({
         to,
         subject,
-        template: 'email',
+        template: 'verification_email',
         context: {
           name,
           heading,
@@ -34,21 +34,27 @@ export class EmailService {
     }
   }
 
-  async sendInvitationEmail(obj: EmailDto) {
+  async sendInvitationEmail(obj: EmailDto, token: string) {
     const to = obj.to;
     const subject = obj.subject;
-    const text = obj.text;
+    const invited_by = obj.invited_by;
+    const invited_bys_role = obj.invited_bys_role;
+    const business = obj.business;
+    const text = token;
     const name = obj.name;
     const heading = obj.heading;
     try {
       await this.mailerService.sendMail({
         to,
         subject,
-        template: 'email',
+        template: 'invitation_email',
         context: {
           name,
           heading,
           text,
+          invited_by,
+          invited_bys_role,
+          business
         },
       });
       return true;
