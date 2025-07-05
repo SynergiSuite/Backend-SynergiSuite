@@ -4,6 +4,7 @@ import {
   PrimaryGeneratedColumn,
   OneToOne,
   JoinColumn,
+  ManyToOne,
 } from 'typeorm';
 import { IsInt, MinLength, MaxLength, IsEmail } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
@@ -38,11 +39,11 @@ export class User {
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   registration_date: Date;
 
-  @OneToOne(() => Business, (business) => business.user)
+  @ManyToOne(() => Business, (business) => business.users)
   @JoinColumn({ name: 'business_id' })
   business: Business;
 
-  @OneToOne(() => Role, (roles) => roles.user)
+  @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
   role: Role;
 }

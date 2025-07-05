@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createClient, RedisClientType } from 'redis';
+import * as crypto from 'crypto'
 
 @Injectable()
 export class RedisService {
@@ -24,7 +25,6 @@ export class RedisService {
   }
 
   async setWithExpiration(key: string, value: any, ttl: number): Promise<void> {
-    // console.log(key, value, ttl)
     await this.redisClient.set(key, value, { EX: ttl });
   }
 
@@ -53,5 +53,19 @@ export class RedisService {
     const jsonString = JSON.stringify(value);
     await this.setWithExpiration(email, jsonString, ttl);
     return otp;
+  }
+
+  async generateTokenForInvitation(invited: string, invitedBy: string, invitedAs: number ){
+    const token = await crypto.randomBytes(16).toString('hex');
+    const ttl = 3600;
+    const obj = {
+      invited: invited,
+      invited_by: invitedBy,
+      invited_as: invitedAs
+    };
+
+    const jsonObj = JSON.stringify(obj);
+    await this.setWithExpiration(token, jsonObj,ttl);
+    return token;
   }
 }

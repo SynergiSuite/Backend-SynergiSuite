@@ -3,13 +3,15 @@ import {
   Column,
   Entity,
   JoinColumn,
+  ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Category } from 'src/category/entities/category.entity';
 
-@Entity({ name: 'businesses' })
+@Entity({ name: 'business' })
 export class Business {
   @PrimaryGeneratedColumn()
   @IsInt()
@@ -28,10 +30,10 @@ export class Business {
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   registration_date: Date;
 
-  @OneToOne(() => Category, (category) => category.business)
+  @ManyToOne(() => Category, (category) => category.business)
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @OneToOne(() => User, (user) => user.business)
-  user: User;
+  @OneToMany(() => User, (user) => user.business)
+  users: User[];
 }

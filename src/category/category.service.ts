@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 // import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,6 +25,14 @@ export class CategoryService {
         error: error.message,
       };
     }
+  }
+
+  findOne(id: number) {
+    const category = this.categoryRepository.findOne({ where: {id: id}})
+    if (!category) {
+      throw new BadRequestException('Unable to find this category')
+    }
+    return category  
   }
 
   findAll() {

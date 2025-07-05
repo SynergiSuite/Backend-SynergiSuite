@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -14,6 +15,9 @@ import { User } from './entities/user.entity';
 import { EmailService } from 'src/mailer/email.service';
 import { RedisService } from 'src/redis/redis.service';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { RolesService } from 'src/roles/roles.service';
+import { Business } from 'src/business/entities/business.entity';
+import { Role } from 'src/roles/entities/role.entity';
 
 @Injectable()
 export class UserService {
@@ -22,6 +26,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     private readonly mailerService: EmailService,
     private readonly redisService: RedisService,
+    private roleService: RolesService,
   ) {}
 
   async findAll(): Promise<User[]> | undefined {
@@ -34,6 +39,10 @@ export class UserService {
 
   async findByEmail(email: string): Promise<User> | undefined {
     return await this.userRepository.findOne({ where: { email } });
+  }
+
+  async findUserAndBusinessByEmail(email: string): Promise<User> | undefined {
+    return await this.userRepository.findOne({where: {email}, relations: ['business', 'role']})
   }
 
   async updateName(
@@ -196,29 +205,64 @@ export class UserService {
 
   async isUserverified(email: string) {
     const user = await this.findByEmail(email);
-
     if (!user.is_Verified) {
       return false;
     }
-
     return true;
+  }
+
+  async userBusiness(obj: any){
+    const user = await this.userRepository.findOne(
+      {where: {email: obj.email},
+      relations: ['business'],
+    })
+    if (user.business) {
+      throw new BadRequestException('User already has a business.')
+    }
+    return user;
+  }
+
+  async updateRole(role_id: number, user: User, business: Business) {
+    const role = await this.roleService.findOne(role_id)
+    user.role = role
+    user.business = business
+    return await this.userRepository.save(user)
   }
 
   async isUserActive(email: string) {
     const user = await this.findByEmail(email);
-
     if (!user.business) {
       return false;
     }
-
     if (!user.role) {
       return false;
     }
-
     if (!user.is_Verified) {
       return false;
     }
-
     return true;
   }
+
+  async userHasBusiness(email: string){
+    const user = await this.userRepository.findOne({where: {email: email}, relations: ['business', 'role']})
+    const role = await this.roleService.findOne(1)
+    if (!user) {
+      return false;
+    }
+    return !!user.business && user.role?.id === role.id;
+  };
+
+  async setInvitedUser(invited: string, invitedBy: string, roleId: number){
+    try {
+      const invitedUser = await this.findUserAndBusinessByEmail(invited);
+      const invitingUser = await this.findUserAndBusinessByEmail(invitedBy);
+      const role = await this.roleService.findOne(roleId);
+      invitedUser.business = invitingUser.business;
+      invitedUser.role =  role;
+      return await this.userRepository.save(invitedUser);
+
+    } catch (error) {
+      throw new HttpException("Something went wrong: " + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  };
 }
