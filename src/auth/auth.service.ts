@@ -51,6 +51,11 @@ export class AuthService {
   async validateSession({ email, password_hash }: PayloadDto) {
     const user = await this.userService.findByEmail(email);
     const validate = await bcrypt.compare(password_hash, user.password_hash);
+    const isVerified = user.is_Verified;
+    let flag = false;
+    if (isVerified) {
+      flag = true;
+    }
     if (validate) {
       try {
         const payload = { email: email };
@@ -65,6 +70,7 @@ export class AuthService {
             status: HttpStatus.NOT_ACCEPTABLE,
           };
         return {
+          verified: flag,
           message: 'Logged in successfully',
           status: HttpStatus.ACCEPTED,
           access_token: token,
