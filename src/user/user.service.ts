@@ -222,6 +222,14 @@ export class UserService {
     return user;
   }
 
+  async getUserBusiness(email: string){
+    const user = await this.userRepository.findOne(
+      {where: {email: email},
+      relations: ['business', 'role'],
+    })
+    return user;
+  }
+
   async updateRole(role_id: number, user: User, business: Business) {
     const role = await this.roleService.findOne(role_id)
     user.role = role

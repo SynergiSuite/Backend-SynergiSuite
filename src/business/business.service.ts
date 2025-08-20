@@ -36,7 +36,6 @@ export class BusinessService {
       const savedBusiness = await this.businessRepository.save(record)
       const updated_user = await this.userService.updateRole(1, user, savedBusiness)
       return {
-        business_name: createBusinessDto.name,
         updated_user,
         message: 'Business registered successfully!'
       };
