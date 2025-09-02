@@ -1,5 +1,5 @@
 export class PayloadDto {
   email: string;
-  password_hash: string;
+  password: string;
   token: string;
 }

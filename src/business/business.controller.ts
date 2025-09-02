@@ -13,29 +13,28 @@ import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { Request } from 'express';
-import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
 import { InviteDto } from './dto/send-invitation.dto';
-import { BusinessGuard } from './guards/user-business.guard';
-import { AlreadyHasBusinessGuard } from './guards/already-has-business.guard';
+import { JwtGuard } from 'src/shared/auth.guard';
+import { businessAlreadyExistsGuard, businessInvitationGuard } from './business.guard';
 
 @Controller('business')
 export class BusinessController {
   constructor(private readonly businessService: BusinessService) {}
 
   @Post("/register")
-  @UseGuards(JwtWithVerificationGuard)
+  @UseGuards(JwtGuard, businessAlreadyExistsGuard) 
   create(@Req() reqObj: Request, @Body() createBusinessDto: CreateBusinessDto) {
     return this.businessService.create(reqObj.user, createBusinessDto);
   }
 
   @Post("/invite")
-  @UseGuards(BusinessGuard)
+  @UseGuards(JwtGuard, businessInvitationGuard)
   sendInvitation(@Req() reqObj: Request, @Body() inviteDto: InviteDto) {
     return this.businessService.sendInvitation(reqObj.user, inviteDto);
   }
 
   @Post("/join-business")
-  @UseGuards(AlreadyHasBusinessGuard)
+  @UseGuards(businessAlreadyExistsGuard)
   acceptInvitation(@Req() reqObj: Request, @Body('token') token: string){
     return this.businessService.acceptInvitation(reqObj.user, token)
   }

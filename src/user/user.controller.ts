@@ -15,7 +15,7 @@ import { JwtGuard } from 'src/shared/auth.guard';
 import { Request } from 'express';
 import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { userExistGuard } from './user.guard';
+import { userExistGuard, userNotVerified } from './user.guard';
 
 @Controller('user')
 export class UserController {
@@ -43,6 +43,7 @@ export class UserController {
 
   @Post('request-verify-email')
   @UseGuards(JwtGuard)
+  @UseGuards(userNotVerified)
   requestVerification(@Req() reqObj: Request) {
     return this.userService.requestEmailVerification(reqObj.user);
   }
