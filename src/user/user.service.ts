@@ -17,10 +17,12 @@ import { RedisService } from 'src/redis/redis.service';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { RolesService } from 'src/roles/roles.service';
 import { Business } from 'src/business/entities/business.entity';
+import { Logger } from '@nestjs/common';
 import { Role } from 'src/roles/entities/role.entity';
 
 @Injectable()
 export class UserService {
+  private readonly logger = new Logger(UserService.name);
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -114,10 +116,15 @@ export class UserService {
     }
   }
 
+  // Email verification
   async requestEmailVerification(data: any) {
+    this.logger.log(`Requesting email verification for user: ${data.email}`);
     const user = await this.findByEmail(data.email);
+    this.logger.log(`User found: ${user.email}`);
     try {
+      this.logger.log(`Generating verification code for user: ${data.email}`);
       const otp = await this.redisService.generateVerificationCode(data.email);
+      this.logger.log(`Verification code generated for user: ${data.email}`);
       const obj = {
         to: data.email,
         subject: 'Please verify Your Email!',
@@ -126,12 +133,15 @@ export class UserService {
         heading: 'Lets verify your email',
       };
 
+      this.logger.log(`Sending verification email to user: ${data.email}`);
       await this.mailerService.sendVerificationEmail(obj);
+      this.logger.log(`Verification email sent to user: ${data.email}`);
       return {
-        message: 'Email sent for verification.',
-        status: HttpStatus.OK,
+        message: 'Email sent for verification.'
       };
     } catch (error) {
+      this.logger.error(`Failed to send verification email to user: ${data.email}`);
+      this.logger.error(error.message);
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
@@ -203,6 +213,7 @@ export class UserService {
     }
   }
 
+  // Helper Function
   async isUserverified(email: string) {
     const user = await this.findByEmail(email);
     if (!user.is_Verified) {
@@ -211,18 +222,26 @@ export class UserService {
     return true;
   }
 
-  async userBusiness(obj: any){
+  // Helper Function
+  async isUserBusinessRegistered(email: string){
+    const user = await this.userRepository.findOne({where: {email: email}, relations: ['business']})
+    if (user.business) {
+      return false;
+    }
+    return true;
+  }
+
+  // Helper Function
+  async findUserWithBusiness(obj: any){
     const user = await this.userRepository.findOne(
       {where: {email: obj.email},
       relations: ['business'],
     })
-    if (user.business) {
-      throw new BadRequestException('User already has a business.')
-    }
     return user;
   }
 
-  async getUserBusiness(email: string){
+  // Helper Function
+  async getUserWithBusiness(email: string){
     const user = await this.userRepository.findOne(
       {where: {email: email},
       relations: ['business', 'role'],
@@ -251,13 +270,15 @@ export class UserService {
     return true;
   }
 
-  async userHasBusiness(email: string){
+  // Helper Function (Guard)
+  async userHasBusinessCheck(email: string){
+    console.log(email)
     const user = await this.userRepository.findOne({where: {email: email}, relations: ['business', 'role']})
-    const role = await this.roleService.findOne(1)
-    if (!user) {
-      return false;
+    console.log(user)
+    if (user.business) {
+      return true;
     }
-    return !!user.business && user.role?.id === role.id;
+    return false;
   };
 
   async setInvitedUser(invited: string, invitedBy: string, roleId: number){

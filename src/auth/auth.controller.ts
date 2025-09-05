@@ -2,9 +2,8 @@ import { Body, Controller, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { PayloadDto } from './dto/payload.dto';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
-import { userAlreadyExistGuard, userExistGuard } from 'src/user/user.guard';
+import { userAlreadyExistGuard, userExistGuard, userNotVerified } from 'src/user/user.guard';
 import { Request } from 'express';
-// import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
 import { JwtGuard } from 'src/shared/auth.guard';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
@@ -35,11 +34,12 @@ export class AuthController {
 
   @Patch('verify-email')
   @UseGuards(JwtGuard)
+  @UseGuards(userNotVerified)
   async verifyEmail(
     @Req() reqObj: Request,
-    @Body('userCode') userCode: number,
+    @Body('otp') otp: number,
   ) {
-    return await this.authService.verifyEmailCode(reqObj.user, userCode);
+    return await this.authService.verifyEmailCode(reqObj.user, otp);
   }
   
   @Patch('refresh-token')

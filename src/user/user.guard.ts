@@ -4,24 +4,32 @@ import {
   ExecutionContext,
   ConflictException,
   NotFoundException,
-} from '@nestjs/common';
+  Logger,
+  UnauthorizedException
+} from '@nestjs/common'
 import { UserService } from './user.service';
 
+
+// This Guard only checks if the user already exists or not.
 @Injectable()
 export class userAlreadyExistGuard implements CanActivate {
+  private readonly logger = new Logger(userAlreadyExistGuard.name);
   constructor(private readonly userService: UserService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const createUserDto = request.body;
 
+    this.logger.log(`Checking if user already exists: ${createUserDto.email}`);
     const existingUser = await this.userService.findByEmail(
       createUserDto.email,
     );
 
     if (existingUser) {
+      this.logger.error(`User already exists: ${createUserDto.email}`)
       throw new ConflictException('User Already Exist');
     } else {
+      this.logger.log(`User does not exist: ${createUserDto.email}`)
       return true;
     }
   }
@@ -47,8 +55,10 @@ export class userExistGuard implements CanActivate {
   }
 }
 
+// This Guard only checks if the user is already verified or not.
 @Injectable()
-export class isUserVerfied implements CanActivate {
+export class userNotVerified implements CanActivate {
+  private readonly logger = new Logger(userNotVerified.name);
   constructor(private readonly userService: UserService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -58,10 +68,13 @@ export class isUserVerfied implements CanActivate {
     const existingUser = await this.userService.findByEmail(
       createUserDto.email,
     );
+    this.logger.log(`Checking if user is verified: ${existingUser.email}`);
 
     if (existingUser.is_Verified) {
-      throw new ConflictException('Could not find email!');
+      this.logger.error(`User is already verified: ${existingUser.email}`)
+      throw new UnauthorizedException('User is already verified!');
     } else {
+      this.logger.log(`User is not verified: ${existingUser.email}`)
       return true;
     }
   }
