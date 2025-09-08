@@ -42,7 +42,7 @@ export class BusinessService {
       this.logger.log(`Saving new business for user: ${email}`);
       const savedBusiness = await this.businessRepository.save(record)
       this.logger.log(`New business saved for user: ${email}`);
-      const updated_user = await this.userService.updateRole(1, user, savedBusiness)
+      await this.userService.updateRole(1, user, savedBusiness)
       return {
         message: 'Business registered successfully!'
       };
@@ -124,7 +124,14 @@ export class BusinessService {
       this.logger.log(`Token removed from redis: ${token}`);
 
       this.logger.log(`User joined organization successfully: ${dataObj.email}`);
-      return {message: "Organization joined successfully.", invitedUser};
+      return {
+        message: "Organization joined successfully.",
+        business_id: invitedUser.business.business_id,
+        business_name: invitedUser.business.name,
+        role_id: invitedUser.role.id,
+        role_name: invitedUser.role.name,
+      };
+
     } catch (error) {
       if (
         error instanceof BadRequestException ||

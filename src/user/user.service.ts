@@ -249,8 +249,9 @@ export class UserService {
     return user;
   }
 
+  // Helper Function
   async updateRole(role_id: number, user: User, business: Business) {
-    const role = await this.roleService.findOne(role_id)
+    const role = await this.roleService.findOne(role_id) 
     user.role = role
     user.business = business
     return await this.userRepository.save(user)
@@ -272,9 +273,7 @@ export class UserService {
 
   // Helper Function (Guard)
   async userHasBusinessCheck(email: string){
-    console.log(email)
     const user = await this.userRepository.findOne({where: {email: email}, relations: ['business', 'role']})
-    console.log(user)
     if (user.business) {
       return true;
     }

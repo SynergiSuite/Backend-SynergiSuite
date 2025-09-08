@@ -33,8 +33,7 @@ export class AuthController {
   }
 
   @Patch('verify-email')
-  @UseGuards(JwtGuard)
-  @UseGuards(userNotVerified)
+  @UseGuards(JwtGuard, userNotVerified)
   async verifyEmail(
     @Req() reqObj: Request,
     @Body('otp') otp: number,

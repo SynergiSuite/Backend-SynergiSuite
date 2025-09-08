@@ -42,8 +42,7 @@ export class UserController {
   }
 
   @Post('request-verify-email')
-  @UseGuards(JwtGuard)
-  @UseGuards(userNotVerified)
+  @UseGuards(JwtGuard, userNotVerified)
   requestVerification(@Req() reqObj: Request) {
     return this.userService.requestEmailVerification(reqObj.user);
   }
