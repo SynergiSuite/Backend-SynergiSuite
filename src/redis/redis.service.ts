@@ -7,7 +7,9 @@ export class RedisService {
   private redisClient: RedisClientType;
   constructor() {
     this.redisClient = createClient({
-      url: 'redis://redis:6379',
+      // redis://default:Ab1VAAIncDE1NDg5MDVhNmU3MDQ0ZWRiYWY3YmFiZWJiNDFiMDUyZHAxNDg0Njk@evolving-garfish-48469.upstash.io:6379
+      // 'redis://redis:6379'
+      url: 'redis://localhost:6379',
     });
     this.redisClient.connect();
   }
