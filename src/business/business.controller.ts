@@ -15,7 +15,7 @@ import { UpdateBusinessDto } from './dto/update-business.dto';
 import { Request } from 'express';
 import { InviteDto } from './dto/send-invitation.dto';
 import { JwtGuard } from 'src/shared/auth.guard';
-import { businessAlreadyExistsGuard, businessInvitationGuard } from './business.guard';
+import { businessAcceptInvitationGuard, businessAlreadyExistsGuard, businessInvitationGuard } from './business.guard';
 
 @Controller('business')
 export class BusinessController {
@@ -34,7 +34,7 @@ export class BusinessController {
   }
 
   @Post("/join-business")
-  @UseGuards(businessAlreadyExistsGuard)
+  @UseGuards(JwtGuard, businessAcceptInvitationGuard)
   acceptInvitation(@Req() reqObj: Request, @Body('token') token: string){
     return this.businessService.acceptInvitation(reqObj.user, token)
   }

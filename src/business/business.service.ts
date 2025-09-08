@@ -124,7 +124,14 @@ export class BusinessService {
       this.logger.log(`Token removed from redis: ${token}`);
 
       this.logger.log(`User joined organization successfully: ${dataObj.email}`);
-      return {message: "Organization joined successfully.", invitedUser};
+      return {
+        message: "Organization joined successfully.",
+        business_id: invitedUser.business.business_id,
+        business_name: invitedUser.business.name,
+        role_id: invitedUser.role.id,
+        role_name: invitedUser.role.name,
+      };
+
     } catch (error) {
       if (
         error instanceof BadRequestException ||

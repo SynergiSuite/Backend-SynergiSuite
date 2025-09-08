@@ -43,7 +43,7 @@ export class businessAlreadyExistsGuard implements CanActivate {
   } 
 }
 
-// This Guard checks for invitation purpose.
+// This Guard checks for inviting purpose.
 @Injectable()
 export class businessInvitationGuard implements CanActivate {
   private readonly logger = new Logger(businessInvitationGuard.name);
@@ -86,4 +86,37 @@ export class businessInvitationGuard implements CanActivate {
     this.logger.log(`User is eligible to invite ${invitedUser}: ${invitingUser.email}`)
     return true;
   } 
+}
+
+// This Guard checks for accepting invitation purpose.
+@Injectable()
+export class businessAcceptInvitationGuard implements CanActivate {
+  private readonly logger = new Logger(businessInvitationGuard.name);
+  constructor(private readonly userService: UserService) { 
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    this.logger.log(`Checking if user is verified: ${user.email}`);
+    const isVerifiedUser = await this.userService.isUserverified(user.email);
+    if (!isVerifiedUser) {
+      this.logger.error(`User is not verified: ${user.email}`)
+      throw new UnauthorizedException('User is not verified');
+    }
+
+    this.logger.log(`Checking if user already has a business: ${user.email}`);
+    const userDetails = await this.userService.userHasBusinessCheck(user.email);
+    if (userDetails) {
+      this.logger.error(`User already has a registered Business: ${user.email}`);
+      throw new BadRequestException('User already has a registered Business.');
+    }
+
+    return true;
+  }
 }
