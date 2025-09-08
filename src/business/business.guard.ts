@@ -1,6 +1,6 @@
 import {
-    BadRequestException,
-    CanActivate,
+  BadRequestException,
+  CanActivate,
   ExecutionContext,
   Injectable,
   UnauthorizedException,
@@ -53,17 +53,20 @@ export class businessInvitationGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const invitingUser = request.user
-    const invitedUser = request.body.email
+    const invitedUser = request.body
 
 
-    if (!invitedUser && !invitingUser) {
+    if (!invitedUser.email && !invitingUser) {
       throw new UnauthorizedException('User not found');
     }
 
-    this.logger.log(`Checking if user already has a business: ${invitingUser}`);
-    const isVerifiedUser = await this.userService.isUserverified(invitingUser);
+    this.logger.log(`Checking if user is verified: ${invitingUser.email}`);
+    const isVerifiedUser = await this.userService.isUserverified(invitingUser.email);
+    this.logger.log(`Checking if inviting user already has a business: ${invitingUser.email}`);
     const invitingUserDetails = await this.userService.userHasBusinessCheck(invitingUser.email);
-    const invitedUserDetails = await this.userService.userHasBusinessCheck(invitedUser);
+    this.logger.log(`Checking if invited user already has a business: ${invitedUser.email}`)
+    const invitedUserDetails = await this.userService.userHasBusinessCheck(invitedUser.email);
+    console.log(invitedUserDetails)
 
     if (!isVerifiedUser) {
       this.logger.error(`User is not verified: ${invitingUser.email}`)

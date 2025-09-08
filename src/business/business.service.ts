@@ -42,7 +42,7 @@ export class BusinessService {
       this.logger.log(`Saving new business for user: ${email}`);
       const savedBusiness = await this.businessRepository.save(record)
       this.logger.log(`New business saved for user: ${email}`);
-      const updated_user = await this.userService.updateRole(1, user, savedBusiness)
+      await this.userService.updateRole(1, user, savedBusiness)
       return {
         message: 'Business registered successfully!'
       };
