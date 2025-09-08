@@ -28,8 +28,8 @@
     # Build the app (dev deps still available here)
     RUN npm run build
     
-    # Reinstall only prod dependencies AFTER build
-    RUN npm ci --only=production --no-optional
+    # Reinstall only prod dependencies (but include optional deps like css-inline)
+    RUN npm ci --only=production --include=optional
     
     ENV NODE_ENV=production
     EXPOSE 3002
