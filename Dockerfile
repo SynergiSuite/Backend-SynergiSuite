@@ -7,7 +7,7 @@
     COPY package*.json ./
     COPY tsconfig*.json ./
     
-    # Install dependencies (including dev for hot reload)
+    # Install dependencies (include dev for build)
     RUN npm install
     
     # Copy the full source code
@@ -25,13 +25,14 @@
     # --- Production ---
     FROM base AS production
     
-    # Reinstall only prod dependencies
-    RUN npm ci --only=production --no-optional
-    
-    # Build the app
+    # Build the app (dev deps still available here)
     RUN npm run build
+    
+    # Reinstall only prod dependencies AFTER build
+    RUN npm ci --only=production --no-optional
     
     ENV NODE_ENV=production
     EXPOSE 3002
+    
     CMD ["node", "dist/main"]
     
