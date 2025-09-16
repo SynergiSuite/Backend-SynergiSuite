@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Category } from 'src/category/entities/category.entity';
+import { Team } from 'src/teams/entities/team.entity';
 
 @Entity({ name: 'business' })
 export class Business {
@@ -33,6 +34,9 @@ export class Business {
   @ManyToOne(() => Category, (category) => category.business)
   @JoinColumn({ name: 'category_id' })
   category: Category;
+
+  @OneToMany(() => Team, (team) => team.business)
+  teams: Team[];
 
   @OneToMany(() => User, (user) => user.business)
   users: User[];

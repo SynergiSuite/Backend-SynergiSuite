@@ -36,7 +36,7 @@ export class UserService {
   }
 
   async findOne(id: number): Promise<User> {
-    return await this.userRepository.findOne({ where: { user_id: id } });
+    return await this.userRepository.findOne({ where: { user_id: id }, relations: ['business', 'role'] });
   }
 
   async findByEmail(email: string): Promise<User> | undefined {
@@ -279,6 +279,15 @@ export class UserService {
     }
     return false;
   };
+
+  // Helper Function
+  async getEmployeesByBusinessId(businessId: number) {
+    return this.userRepository.find({
+      where: { business: { business_id: businessId } },
+      select: ['user_id', 'name', 'email'],  
+      relations: ['role', 'business'],          
+    });
+  }
 
   async setInvitedUser(invited: string, invitedBy: string, roleId: number){
     try {

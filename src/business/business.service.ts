@@ -145,6 +145,13 @@ export class BusinessService {
     };
   };
 
+  async getEmployees(data: any) {
+    const user = await this.userService.getUserWithBusiness(data.email);
+    const employees = await this.userService.getEmployeesByBusinessId(user.business.business_id)
+    return employees;
+  };
+    
+
   findAll() {
     return `This action returns all business`;
   }

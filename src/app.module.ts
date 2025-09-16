@@ -6,9 +6,10 @@ import { AuthModule } from './auth/auth.module';
 import { BusinessModule } from './business/business.module';
 import { CategoryModule } from './category/category.module';
 import { RolesModule } from './roles/roles.module';
+import { TeamsModule } from './teams/teams.module';
 
 @Module({
-  imports: [UserModule, AuthModule, BusinessModule, CategoryModule, RolesModule],
+  imports: [UserModule, AuthModule, BusinessModule, CategoryModule, RolesModule, TeamsModule],
   controllers: [AppController],
   providers: [AppService],
 })

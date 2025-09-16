@@ -69,7 +69,7 @@ export class AuthService {
   async validateSession({ email, password }: PayloadDto) {
     this.logger.log(`Starting to login user: ${email}`);
 
-    const user = await this.userService.findUserWithBusiness(email);
+    const user = await this.userService.getUserWithBusiness(email);
     const validate = await bcrypt.compare(password, user.password_hash);
 
     if (user.is_Verified) {
@@ -82,7 +82,6 @@ export class AuthService {
     if (validate) {
       try {
         this.logger.log(`User credentials are validated: ${email}`);
-
         const payload = { email: email };
         const token = this.jwtService.sign(payload);
         this.logger.log(`Generating and updating token for user: ${email}`);
@@ -104,14 +103,19 @@ export class AuthService {
           return {
             message: 'Logged in successfully',
             access_token: token,
+            email: user.email,
+            name: user.name,
             verified: user.is_Verified,
             business_name: user.business.name,
             business_id: user.business.business_id,
+            role: user.role
           };
         } else {
           return {
             message: 'Logged in successfully',
             access_token: token,
+            email: user.email,
+            name: user.name,
             verified: user.is_Verified,
           };
         }
@@ -173,6 +177,7 @@ export class AuthService {
 
   // Verify Email Function
   async verifyEmailCode(data: any, otp: number) {
+    console.log(otp)
     this.logger.log(`Starting to verify code for email request: ${data.email}`);
 
     this.logger.log(`Verifying data in Redis: ${data.email}`);
