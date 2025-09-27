@@ -181,8 +181,26 @@ export class TeamsService {
     }
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} team`;
+  // This function deletes team.
+  async removeTeam(id: string) {
+    this.logger.log(`Initiating to delete team: ${id}`);
+    try {
+      this.logger.log(`Getting team: ${id}`);
+      const team = await this.findOne(id);
+      if (!team) {
+        this.logger.error(`Team not found: ${id}`);
+        throw new HttpException('Invalid team ID', HttpStatus.BAD_REQUEST);
+      }
+      this.logger.log(`Deleting team: ${id}`);
+
+      this.logger.log(`Deleting team members: ${id}`);
+      await this.teamRepository.delete(id);
+      this.logger.log(`Team deleted successfully: ${id}`);
+      return {message: 'Team deleted successfully'};
+    } catch (error) {
+      this.logger.error(`Error deleting team: ${id}`, error.message);
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
   }
 
 

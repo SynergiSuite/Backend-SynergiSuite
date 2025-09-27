@@ -18,6 +18,7 @@ import { UpdatePasswordDto } from './dto/update-password.dto';
 import { RolesService } from 'src/roles/roles.service';
 import { Business } from 'src/business/entities/business.entity';
 import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Role } from 'src/roles/entities/role.entity';
 
 @Injectable()
@@ -29,6 +30,7 @@ export class UserService {
     private readonly mailerService: EmailService,
     private readonly redisService: RedisService,
     private roleService: RolesService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async findAll(): Promise<User[]> | undefined {
@@ -282,10 +284,40 @@ export class UserService {
 
   // Helper Function
   async getEmployeesByBusinessId(businessId: number) {
-    return this.userRepository.find({
+    const employees = await this.userRepository.find({
       where: { business: { business_id: businessId } },
-      select: ['user_id', 'name', 'email'],  
+      select: ['user_id', 'name', 'email', 'token_digest' ],  
       relations: ['role', 'business'],          
+    });
+
+    return employees.map(user => {
+      let tokenExpiry: Date | null = null;
+      let isExpired = null;
+
+      if (user.token_digest) {
+        try {
+          // Decode without verifying (just extract payload)
+          const decoded = this.jwtService.decode(user.token_digest) as { exp?: number };
+
+          if (decoded?.exp) {
+            tokenExpiry = new Date(decoded.exp * 1000); // exp is in seconds
+            isExpired = Date.now() >= decoded.exp * 1000;
+          }
+        } catch (e) {
+          tokenExpiry = null;
+          isExpired = true;
+        }
+      }
+
+      return {
+        user_id: user.user_id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        business: user.business,
+        tokenExpiry,
+        isExpired,
+      };
     });
   }
 

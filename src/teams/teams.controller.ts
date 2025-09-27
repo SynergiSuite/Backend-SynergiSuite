@@ -14,7 +14,7 @@ export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
   @Post('/create')
-  @UseGuards(JwtGuard, IsVerifiedGuard, createTeamGuard)
+  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard, createTeamGuard)
   create(@Body() createTeamDto: CreateTeamDto) {
     return this.teamsService.create(createTeamDto);
   }
@@ -48,4 +48,11 @@ export class TeamsController {
   removeMembers(@Body() removeMembersDto: RemoveMembersDto) {
     return this.teamsService.removeMembers(removeMembersDto);
   }
+
+  @Post('remove-team')
+  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard)
+  removeTeam(@Body('team_id') teamID: string) {
+    return this.teamsService.removeTeam(teamID);
+  }
+
 }

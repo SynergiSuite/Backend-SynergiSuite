@@ -33,13 +33,6 @@ export class createTeamGuard implements CanActivate {
         const userDetails = await this.userService.getUserWithBusiness(user.email);
         this.logger.log(`User details found: ${user.email}`);
 
-        this.logger.log(`Checking user role: ${user.email}`);
-        if (userDetails.role.id !== 1 && userDetails.role.id !== 2) {
-            this.logger.error(`User role is not valid: ${user.email}`);
-            throw new UnauthorizedException('Only business owner or manager can create a new team.');
-        }
-        this.logger.log(`User is authorized to create a new team.`);
-
         this.logger.log(`Checking for leader details: ${body.leader_id}`);
         const leaderDetails = await this.userService.findOne(body.leader_id);
         if (!leaderDetails) {
@@ -163,21 +156,18 @@ export class AddTeamMembersGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
     const body = request.body;
-
     if (!user) {
       this.logger.error(`No user found in the request`);
       throw new UnauthorizedException('User not found');
     }
     this.logger.log(`User found in the request: ${user.email}`);
 
-    // fetch full user details with business
     const userDetails = await this.userService.getUserWithBusiness(user.email);
     if (!userDetails) {
       this.logger.error(`User details not found for ${user.email}`);
       throw new UnauthorizedException('Invalid user');
     }
 
-    // validate team
     const teamId = body.team_id;
     if (!teamId) {
       throw new BadRequestException('team_id is required');
@@ -188,7 +178,6 @@ export class AddTeamMembersGuard implements CanActivate {
       throw new BadRequestException('Invalid team ID');
     }
 
-    // check team belongs to same business
     if (teamDetails.business.business_id !== userDetails.business.business_id) {
       this.logger.error(
         `User and team are not in the same business: ${user.email} and team ${teamId}`,
@@ -199,7 +188,6 @@ export class AddTeamMembersGuard implements CanActivate {
     }
     this.logger.log(`Team validated and belongs to same business`);
 
-    // validate members
     if (body.members && Array.isArray(body.members) && body.members.length > 0) {
       this.logger.log(`Checking ${body.members.length} team members`);
 

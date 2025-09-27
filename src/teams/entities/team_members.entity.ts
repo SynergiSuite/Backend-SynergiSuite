@@ -14,7 +14,7 @@ import {
     @ManyToOne(() => User, (user) => user.teamMemberships, { eager: true })
     user: User;
   
-    @ManyToOne(() => Team, (team) => team.members)
+    @ManyToOne(() => Team, (team) => team.members, { onDelete: 'CASCADE' })
     team: Team;
   }
   

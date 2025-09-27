@@ -96,10 +96,10 @@ export class AuthService {
             message: 'Some error occured',
             status: HttpStatus.NOT_ACCEPTABLE,
           };
-        };
+        }
 
         this.logger.log(`User logged in successfully: ${email}`);
-        if(user.business){
+        if (user.business) {
           return {
             message: 'Logged in successfully',
             access_token: token,
@@ -108,7 +108,8 @@ export class AuthService {
             verified: user.is_Verified,
             business_name: user.business.name,
             business_id: user.business.business_id,
-            role: user.role
+            role: user.role,
+            business: true,
           };
         } else {
           return {
@@ -117,6 +118,7 @@ export class AuthService {
             email: user.email,
             name: user.name,
             verified: user.is_Verified,
+            business: false,
           };
         }
       } catch (error) {
@@ -132,14 +134,17 @@ export class AuthService {
   }
 
   // Verify Update Email Code Function
-  async verifyUpdateEmailCode(code: number, userObject: any) {
-    this.logger.log(`Starting to verify code for update email request: ${userObject.email}`);
+  async verifyUpdateEmailCode(code: string, userObject: any) {
+    this.logger.log(
+      `Starting to verify code for update email request: ${userObject.email}`,
+    );
     const data = await this.getCodeFromRedis(userObject.email);
     if (!data) {
       this.logger.error(`No data found for this email: ${userObject.email}`);
       return { error: 'No data found for this email. Request for a new code.' };
-    };
+    }
     this.logger.log(`Data found related to the email: ${userObject.email}`);
+    console.log(code.toString());
 
     if (data.otp !== code.toString()) {
       this.logger.error(`Invalid code for the email: ${userObject.email}`);
@@ -150,7 +155,9 @@ export class AuthService {
     this.logger.log(`Updating email for the user: ${userObject.email}`);
     const payload = { email: data.newEmail };
     const token = this.jwtService.sign(payload);
-    this.logger.log(`Generating and updating token for user: ${userObject.email}`);
+    this.logger.log(
+      `Generating and updating token for user: ${userObject.email}`,
+    );
 
     try {
       await this.userRepository.update(
@@ -166,7 +173,9 @@ export class AuthService {
         access_token: token,
       };
     } catch (error) {
-      this.logger.error(`Failed to update email for the user: ${userObject.email}`);
+      this.logger.error(
+        `Failed to update email for the user: ${userObject.email}`,
+      );
       this.logger.error(error.message);
       throw new HttpException(
         { error: error.message, message: 'Unable to update email' },
@@ -176,8 +185,7 @@ export class AuthService {
   }
 
   // Verify Email Function
-  async verifyEmailCode(data: any, otp: number) {
-    console.log(otp)
+  async verifyEmailCode(data: any, otp: string) {
     this.logger.log(`Starting to verify code for email request: ${data.email}`);
 
     this.logger.log(`Verifying data in Redis: ${data.email}`);
@@ -189,7 +197,7 @@ export class AuthService {
     this.logger.log(`Data found related to the email: ${data.email}`);
 
     this.logger.log(`Verifying code for the email: ${data.email}`);
-    if (redisData.otp !== otp.toString()) {
+    if (redisData.otp !== otp) {
       this.logger.error(`Invalid code for the email: ${data.email}`);
       throw new UnauthorizedException('Invalid Code');
     }
@@ -206,7 +214,6 @@ export class AuthService {
         message: 'User successfully verified',
         isVerified: true,
       };
-
     } catch (error) {
       this.logger.error(`Failed to verify email for the user: ${data.email}`);
       this.logger.error(error.message);
@@ -241,8 +248,10 @@ export class AuthService {
       data.updatedPassword,
       user.password_hash,
     );
-    if (validate){
-      this.logger.error(`New password cannot be same as old password for the email: ${data.email}`);
+    if (validate) {
+      this.logger.error(
+        `New password cannot be same as old password for the email: ${data.email}`,
+      );
       throw new HttpException(
         'New password cannot be same as old password.',
         HttpStatus.BAD_REQUEST,
@@ -263,12 +272,14 @@ export class AuthService {
         status: HttpStatus.OK,
       };
     } catch (error) {
-      this.logger.error(`Failed to update password for the user: ${data.email}`);
+      this.logger.error(
+        `Failed to update password for the user: ${data.email}`,
+      );
       this.logger.error(error.message);
       throw new HttpException(error.emssage, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-// Refresh token
+  // Refresh token
   async generateRefreshAccessToken(token: string, userObj: any) {
     try {
       const existingToken = await this.userRepository.findOne({
@@ -318,7 +329,6 @@ export class AuthService {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
 
   // Helper Functions Below
   async validate(payload: any) {
