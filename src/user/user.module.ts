@@ -8,6 +8,7 @@ import { DatabaseModule } from 'src/database/database.module';
 import { RedisService } from 'src/redis/redis.service';
 import { RedisModule } from 'src/redis/redis.module';
 import { RolesModule } from 'src/roles/roles.module';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { RolesModule } from 'src/roles/roles.module';
     RolesModule,
   ],
   controllers: [UserController],
-  providers: [UserService, RedisService],
+  providers: [UserService, RedisService, JwtService],
   exports: [UserService],
 })
 export class UserModule {}

@@ -5,10 +5,13 @@ import {
   OneToOne,
   JoinColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { IsInt, MinLength, MaxLength, IsEmail } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
 import { Role } from 'src/roles/entities/role.entity';
+import { TeamMember } from 'src/teams/entities/team_members.entity';
+import { Team } from 'src/teams/entities/team.entity';
 
 @Entity({ name: 'users' })
 export class User {
@@ -46,4 +49,11 @@ export class User {
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
   role: Role;
+
+  @OneToMany(() => TeamMember, (member) => member.user)
+  teamMemberships: TeamMember[];
+
+  @OneToMany(() => Team, (team) => team.leader)
+  leads: Team[];
 }
+

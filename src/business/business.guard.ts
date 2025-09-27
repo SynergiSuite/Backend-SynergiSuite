@@ -25,13 +25,7 @@ export class businessAlreadyExistsGuard implements CanActivate {
     }
 
     this.logger.log(`Checking if user already has a business: ${user.email}`);
-    const isVerifiedUser = await this.userService.isUserverified(user.email);
     const userDetails = await this.userService.userHasBusinessCheck(user.email);
-
-    if (!isVerifiedUser) {
-      this.logger.error(`User is not verified: ${user.email}`)
-      throw new UnauthorizedException('User is not verified');
-    }
 
     if (userDetails) {
       this.logger.error(`User already has a registered Businessssss: ${user.email}`)
@@ -68,11 +62,6 @@ export class businessInvitationGuard implements CanActivate {
     const invitedUserDetails = await this.userService.userHasBusinessCheck(invitedUser.email);
     console.log(invitedUserDetails)
 
-    if (!isVerifiedUser) {
-      this.logger.error(`User is not verified: ${invitingUser.email}`)
-      throw new UnauthorizedException('User is not verified');
-    }
-
     if (invitedUserDetails) {
       this.logger.error(`User already has a registered Business: ${invitedUser.email}`)
       throw new BadRequestException('User already has a registered Business.');
@@ -103,18 +92,38 @@ export class businessAcceptInvitationGuard implements CanActivate {
       throw new UnauthorizedException('User not found');
     }
 
-    this.logger.log(`Checking if user is verified: ${user.email}`);
-    const isVerifiedUser = await this.userService.isUserverified(user.email);
-    if (!isVerifiedUser) {
-      this.logger.error(`User is not verified: ${user.email}`)
-      throw new UnauthorizedException('User is not verified');
-    }
-
     this.logger.log(`Checking if user already has a business: ${user.email}`);
     const userDetails = await this.userService.userHasBusinessCheck(user.email);
     if (userDetails) {
       this.logger.error(`User already has a registered Business: ${user.email}`);
       throw new BadRequestException('User already has a registered Business.');
+    }
+
+    return true;
+  }
+}
+
+
+// This Gurads check for getting employees purpose.
+@Injectable()
+export class checkHasBusiness implements CanActivate {
+  private readonly Logger = new Logger(checkHasBusiness.name);
+
+  constructor(private readonly userService: UserService) { }
+ 
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    this.Logger.log(`Checking if user has a business: ${user.email}`);
+    const userDetails = await this.userService.userHasBusinessCheck(user.email);
+    if (!userDetails) {
+      this.Logger.error(`User does not have a registered Business: ${user.email}`);
+      throw new BadRequestException('User does not have a registered Business.');
     }
 
     return true;
