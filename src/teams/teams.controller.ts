@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Query } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
-import { AddMembersDto, RemoveMembersDto, UpdateTeamDto, UpdateTeamNameDto } from './dto/update-team.dto';
+import {  UpdateTeamDto } from './dto/update-team.dto';
 import { JwtGuard } from 'src/shared/auth.guard';
 import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
 import { AddTeamMembersGuard, createTeamGuard, RemoveTeamMembersGuard, roleGuard } from './team.guard';
@@ -31,22 +31,22 @@ export class TeamsController {
     return this.teamsService.getTeamDetails(team_id);
   }
 
-  @Post('update-name')
-  @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard)
-  updateTeamName(@Body() updateNameDto: UpdateTeamNameDto) {
-    return this.teamsService.updateTeamName(updateNameDto);
+  @Post('update-team')
+  @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard, AddTeamMembersGuard)
+  updateTeam(@Body() updateTeamDto: UpdateTeamDto) {
+    return this.teamsService.updateTeam(updateTeamDto);
   }
 
-  @Post('update-members')
-  @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard, AddTeamMembersGuard)
-  updateMembers(@Body() updateMembersDto: AddMembersDto) {
-    return this.teamsService.updateMembers(updateMembersDto);
-  }
+  // @Post('update-members')
+  // @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard, AddTeamMembersGuard)
+  // updateMembers(@Body() updateMembersDto: AddMembersDto) {
+  //   return this.teamsService.updateMembers(updateMembersDto);
+  // }
 
   @Post('remove-members')
   @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard, RemoveTeamMembersGuard)
-  removeMembers(@Body() removeMembersDto: RemoveMembersDto) {
-    return this.teamsService.removeMembers(removeMembersDto);
+  removeMembers(@Body() team_id: string, members: []) {
+    return this.teamsService.removeMembers(team_id, members);
   }
 
   @Post('remove-team')
