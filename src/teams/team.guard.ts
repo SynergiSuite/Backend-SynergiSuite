@@ -168,9 +168,9 @@ export class AddTeamMembersGuard implements CanActivate {
       throw new UnauthorizedException('Invalid user');
     }
 
-    const teamId = body.team_id;
+    const teamId = body.id;
     if (!teamId) {
-      throw new BadRequestException('team_id is required');
+      throw new BadRequestException('team id is required');
     }
     const teamDetails = await this.teamService.findOne(teamId);
     if (!teamDetails) {
@@ -244,13 +244,14 @@ export class RemoveTeamMembersGuard implements CanActivate {
 
     // fetch full user details with business
     const userDetails = await this.userService.getUserWithBusiness(user.email);
+    this.logger.log(userDetails)
     if (!userDetails) {
       this.logger.error(`User details not found for ${user.email}`);
       throw new UnauthorizedException('Invalid user');
     }
 
     // validate team
-    const teamId = body.team_id;
+    const teamId = body.id;
     if (!teamId) {
       throw new BadRequestException('team_id is required');
     }

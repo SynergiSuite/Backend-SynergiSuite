@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateTeamDto } from './dto/create-team.dto';
-import { AddMembersDto, UpdateTeamDto, UpdateTeamNameDto } from './dto/update-team.dto';
+import { UpdateTeamDto } from './dto/update-team.dto';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from './entities/team.entity';
@@ -29,6 +29,7 @@ export class TeamsService {
       const leader = await this.userService.findOne(createTeamDto.leader_id);
       const obj = {
         name: createTeamDto.name,
+        description: createTeamDto.description,
         business: leader.business,
         leader
         
@@ -40,8 +41,7 @@ export class TeamsService {
       await this.addMembers(team, createTeamDto.members);
 
       const data = await this.findOne(result.id);
-      return {
-        message: 'Team created successfully', 
+      return { 
         data
       }
 
@@ -63,11 +63,11 @@ export class TeamsService {
       const teams = await this.teamRepository.find(
         { 
           where: {business: {business_id: user.business.business_id}},
-          relations:['leader']
+          relations:['leader', 'members', 'members.user']
         }
       ); 
       return{
-        message: "Teams found successfully",
+        count: teams.length,
         teams
       }
     } catch (error) {
@@ -84,7 +84,6 @@ export class TeamsService {
       const team = await this.findOne(id);
       this.logger.log(`Team found: ${team.name}`);
       return {
-        message: "Team found successfully",
         team
       }
     } catch (error) {
@@ -94,90 +93,114 @@ export class TeamsService {
   }
 
   // This function updates team name
-  async updateTeamName(updateTeamDto: UpdateTeamNameDto) {
-    const {id, name} = updateTeamDto;
+  async updateTeam(updateTeamDto: UpdateTeamDto) {
     try {
-      this.logger.log(`Initiating to update team name: ${id}`);
-      const team = await this.findOne(id);
-      team.name = name;
+      this.logger.log(`Initiating to update team name: ${updateTeamDto.id}`);
+      const team = await this.findOne(updateTeamDto.id);
+      team.name = updateTeamDto.name;
+      team.description = updateTeamDto.description;
       await this.teamRepository.save(team);
+      await this.updateMembers(team, updateTeamDto.members)
       return {message: 'Team name updated successfully', team};
 
     } catch (error) {
-      this.logger.error(`Error updating team name: ${id}`, error.message);
+      this.logger.error(`Error updating team name: ${updateTeamDto.id}`, error.message);
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
   // This function updates team members (add)
-  async updateMembers(addMembersDto: AddMembersDto) {
-    this.logger.log(`Initiating to update team members: ${addMembersDto.team_id}`);
-    const {team_id, members} = addMembersDto;
-
+  async updateMembers(team: Team, desiredUserIds: number[]) {
+    this.logger.log(`Initiating to sync team members for team: ${team.id}`);
     try {
-      this.logger.log(`Getting team: ${team_id}`);
-      const team = await this.findOne(team_id);
-      this.logger.log(`Team found: ${team.name}`);
-
-      this.logger.log(`Adding members to team: ${team.name}`);
-      const operation = this.addMembers(team, members);
-
-
-      if (!operation) {
-        this.logger.error("Something went wrong while adding members.");
-        throw new HttpException("Something went wrong while adding members.", HttpStatus.INTERNAL_SERVER_ERROR);
+      const currentTeamMembers = await this.teamMemberRepository.find({
+        where: { team: { id: team.id } },
+        relations: ['user'],
+      });
+      const currentUserIds = currentTeamMembers.map(tm => tm.user.user_id);
+      const userIdsToAdd = desiredUserIds.filter(id => !currentUserIds.includes(id));
+      const teamMembersToRemove = currentTeamMembers.filter(
+        tm => !desiredUserIds.includes(tm.user.user_id)
+      );
+      
+      if (userIdsToAdd.length > 0) {
+        this.logger.log(`Adding members ${userIdsToAdd.length} ids.`);
+        await this.addMembers(team, userIdsToAdd);
       }
-      this.logger.log(`Members added successfully to team: ${team.name}`);
-      return {message: 'Members added successfully', team};
+
+      if (teamMembersToRemove.length > 0) {
+        const userIdsToRemove = teamMembersToRemove.map(tm => tm.user.user_id);
+        this.logger.log(`Removing members: [${userIdsToRemove.join(', ')}]`);
+        await this.teamMemberRepository.remove(teamMembersToRemove);
+      }
+
+      if (userIdsToAdd.length === 0 && teamMembersToRemove.length === 0) {
+        this.logger.log(`No member changes required for team: ${team.name}`);
+      }
+      
+      this.logger.log(`Members synced successfully for team: ${team.name}`);
+      return { message: 'Members updated successfully', team };
 
     } catch (error) {
-      this.logger.error(`Error adding members to team: ${team_id}`, error.message);
+      this.logger.error(`Error syncing members for team: ${team.id}`, error.stack); 
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
-    
-  };
+  }
 
   // This function removes members from team
-  async removeMembers(addMembersDto: AddMembersDto) {
-    const { team_id, members } = addMembersDto;
-  
+  async removeMembers(team_id: string, memberUserIds: number[]) {
     try {
-      // 1. Load the team with its current members
+      this.logger.log(`Initiating removal of members from team: ${team_id}`);
+
+      // 1. Find the team and its current member entries (TeamMember)
       const team = await this.teamRepository.findOne({
         where: { id: team_id },
-        relations: ['members', 'members.user'],
+        relations: ['members', 'members.user'], 
       });
-  
-      // 2. Filter out only the members that exist in this team
-      const membersToRemove = team.members.filter((tm) =>
-        members.includes(tm.user.user_id),
+
+      if (!team) {
+        this.logger.warn(`Team not found: ${team_id}`);
+        throw new NotFoundException(`Team with ID ${team_id} not found`);
+      }
+      
+      const membersToRemove = team.members.filter((teamMember) =>
+        memberUserIds.includes(teamMember.user.user_id),
       );
-  
+
       if (membersToRemove.length === 0) {
         this.logger.warn(`No valid members found to remove in team: ${team_id}`);
         throw new HttpException(
-          'No valid members found in this team to remove',
+          'None of the provided members were found in this team',
           HttpStatus.BAD_REQUEST,
         );
       }
-  
-      // 3. Remove members from team_members table
+
+      // 5. Remove the TeamMember join-table entries
       await this.teamMemberRepository.remove(membersToRemove);
-  
+
+      const removedIds = membersToRemove.map((tm) => tm.user.user_id);
       this.logger.log(
-        `Removed ${membersToRemove.length} members from team: ${team.name}`,
+        `Removed ${membersToRemove.length} members [${removedIds.join(', ')}] from team: ${team.name}`,
       );
-  
+
       return {
         message: `Successfully removed ${membersToRemove.length} members from team`,
-        removedMembers: membersToRemove.map((tm) => tm.user.user_id),
+        removedMemberIds: removedIds,
       };
+
     } catch (error) {
       this.logger.error(
         `Error removing members from team: ${team_id}`,
-        error.message,
+        error.stack,
       );
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'An error occurred while removing members',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 

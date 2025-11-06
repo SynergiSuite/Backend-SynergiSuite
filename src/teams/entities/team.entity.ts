@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { TeamMember } from './team_members.entity';
-import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
 
 @Entity()
@@ -17,6 +17,13 @@ export class Team {
     message: 'Name can only contain letters and spaces',
   })
   name: string;
+
+  @Column({ nullable: true })
+  @IsOptional() 
+  @IsString({ message: 'Description must be a string' })
+  @MinLength(10, { message: 'Description is too short (min: 10 characters)' })
+  @MaxLength(255, { message: 'Description is too long (max: 255 characters)' })
+  description: string;
 
   @ManyToOne(() => Business, (business) => business.teams, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'business_id' })
