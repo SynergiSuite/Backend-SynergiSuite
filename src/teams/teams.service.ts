@@ -4,7 +4,7 @@ import { UpdateTeamDto } from './dto/update-team.dto';
 import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from './entities/team.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { TeamMember } from './entities/team_members.entity';
 import { UserService } from 'src/user/user.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
@@ -259,4 +259,20 @@ export class TeamsService {
     }
     return true; 
   }
+
+  async findTeams(teamIds: string[]) {
+    const teams = await this.teamRepository.find({where: {id: In(teamIds)}});
+    return teams;
+  }
+
+  async findValidTeams(teamIds: string[], businessId: number): Promise<boolean> {
+  for (const id of teamIds) {
+    const team = await this.teamRepository.findOne({ where: { id }, relations: ['business'] });
+    if (!team || team.business.business_id !== businessId) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }

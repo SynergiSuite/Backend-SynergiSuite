@@ -11,6 +11,8 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { Category } from 'src/category/entities/category.entity';
 import { Team } from 'src/teams/entities/team.entity';
+import { Project } from 'src/projects/entities/project.entity';
+import { Client } from 'src/clients/entities/client.entity';
 
 @Entity({ name: 'business' })
 export class Business {
@@ -40,4 +42,11 @@ export class Business {
 
   @OneToMany(() => User, (user) => user.business)
   users: User[];
+
+  @OneToMany(() => Project, (project) => project.business)
+  projects: Project[];
+
+  @OneToMany(() => Client, (client) => client.business)
+  clients: Client[];
+
 }

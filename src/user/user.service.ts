@@ -5,7 +5,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -33,6 +33,7 @@ export class UserService {
     private readonly jwtService: JwtService,
   ) {}
 
+  // Find all users
   async findAll(): Promise<User[]> | undefined {
     return await this.userRepository.find();
   }
@@ -277,7 +278,7 @@ export class UserService {
   async userHasBusinessCheck(email: string){
     const user = await this.userRepository.findOne({where: {email: email}, relations: ['business', 'role']})
     if (user.business) {
-      return true;
+      return true && {business_id: user.business.business_id}
     }
     return false;
   };
@@ -319,6 +320,22 @@ export class UserService {
         isExpired,
       };
     });
+  }
+
+  async registrationCounts(businessID: number){
+    const today = new Date();
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+    firstDayOfWeek.setHours(0, 0, 0, 0);
+
+    const newRegistrationsThisWeek = await this.userRepository.count({
+      where: {
+        business: { business_id: businessID },
+        registration_date: Between(firstDayOfWeek, today),
+      },
+    });
+  
+    return newRegistrationsThisWeek;
   }
 
   async setInvitedUser(invited: string, invitedBy: string, roleId: number){
