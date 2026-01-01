@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { createClient, RedisClientType } from 'redis';
-import * as crypto from 'crypto'
+import * as crypto from 'crypto';
 
 @Injectable()
 export class RedisService {
   private redisClient: RedisClientType;
   constructor() {
     this.redisClient = createClient({
-      // redis://default:Ab1VAAIncDE1NDg5MDVhNmU3MDQ0ZWRiYWY3YmFiZWJiNDFiMDUyZHAxNDg0Njk@evolving-garfish-48469.upstash.io:6379
+      // redis://default:AYqOAAIncDIzNzdhZjVlZDcyNDM0Nzk2YjFmOWFhZGMxNWNiOTZhMXAyMzU0NzA@summary-quetzal-35470.upstash.io:6379
       // 'redis://redis:6379'
-      url: 'redis://default:Ab1VAAIncDE1NDg5MDVhNmU3MDQ0ZWRiYWY3YmFiZWJiNDFiMDUyZHAxNDg0Njk@evolving-garfish-48469.upstash.io:6379',
+      url: 'redis://default:AYqOAAIncDIzNzdhZjVlZDcyNDM0Nzk2YjFmOWFhZGMxNWNiOTZhMXAyMzU0NzA@summary-quetzal-35470.upstash.io:6379',
       socket: {
-        tls: true, 
+        tls: true,
       },
     });
     this.redisClient.connect();
@@ -60,17 +60,21 @@ export class RedisService {
     return otp;
   }
 
-  async generateTokenForInvitation(invited: string, invitedBy: string, invitedAs: number ){
+  async generateTokenForInvitation(
+    invited: string,
+    invitedBy: string,
+    invitedAs: number,
+  ) {
     const token = await crypto.randomBytes(16).toString('hex');
     const ttl = 3600;
     const obj = {
       invited: invited,
       invited_by: invitedBy,
-      invited_as: invitedAs
+      invited_as: invitedAs,
     };
 
     const jsonObj = JSON.stringify(obj);
-    await this.setWithExpiration(token, jsonObj,ttl);
+    await this.setWithExpiration(token, jsonObj, ttl);
     return token;
   }
 }

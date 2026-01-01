@@ -60,7 +60,6 @@ export class businessInvitationGuard implements CanActivate {
     const invitingUserDetails = await this.userService.userHasBusinessCheck(invitingUser.email);
     this.logger.log(`Checking if invited user already has a business: ${invitedUser.email}`)
     const invitedUserDetails = await this.userService.userHasBusinessCheck(invitedUser.email);
-    console.log(invitedUserDetails)
 
     if (invitedUserDetails) {
       this.logger.error(`User already has a registered Business: ${invitedUser.email}`)
@@ -128,4 +127,73 @@ export class checkHasBusiness implements CanActivate {
 
     return true;
   }
+}
+
+@Injectable()
+export class checkValidRequestedUser implements CanActivate {
+  private readonly Logger = new Logger(checkValidRequestedUser.name);
+
+  constructor(private readonly userService: UserService) { }
+ 
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const params = request.params;
+    const user = request.user
+    const requestedUserId = params.id
+
+    if (!user) {
+      throw new UnauthorizedException("User not found")
+    }
+
+    if (!requestedUserId) {
+      throw new BadRequestException('Id required for deletion.');
+    }
+
+    this.Logger.log(`Checking if user has a business: ${user.email}`);
+    const userDetails = await this.userService.userHasBusinessCheck(user.email);
+    const reqUserDetails = await this.userService.findOne(requestedUserId);
+
+    if (!userDetails) {
+      this.Logger.error(`User does not have a registered Business: ${user.email}`);
+      throw new BadRequestException('User does not have a registered Business.');
+    }
+
+    if (!reqUserDetails) {
+      this.Logger.error(`Requested user does exists: ${user.email}`);
+      throw new BadRequestException('User does not have a registered Business.');
+    }
+
+    if (userDetails.business_id != reqUserDetails.business.business_id) {
+      this.Logger.error(`Requested user does exists for this business: ${user.email}`);
+      throw new BadRequestException('User does not have a registered Business.');
+    }
+
+    if (reqUserDetails.role.id == 1) {
+      this.Logger.error(`Requested user is an admin: ${user.email}`);
+      throw new BadRequestException('User is an founder.');
+    }
+
+    return true;
+  }
+}
+
+@Injectable()
+export class roleGuard implements CanActivate {
+  private readonly logger = new Logger(roleGuard.name);
+
+  constructor(private readonly userService: UserService) {}
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
+        const request = context.switchToHttp().getRequest();
+        const user = request.user;
+
+        this.logger.log(`Checking if user has right role: ${user.email}`);
+        const userDetails = await this.userService.getUserWithBusiness(user.email);
+        if(userDetails.role.id !== 1 && userDetails.role.id !== 2){
+          this.logger.error(`User does not have right role: ${user.email}`);
+          throw new UnauthorizedException('User is not authorized to add new client.');
+        }
+        this.logger.log(`User has right role: ${user.email}`);
+        return true;
+    }
 }

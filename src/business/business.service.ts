@@ -184,10 +184,25 @@ export class BusinessService {
 
   async getEmployees(data: any) {
     const user = await this.userService.getUserWithBusiness(data.email);
+    const businessId = user.business.business_id;
     const employees = await this.userService.getEmployeesByBusinessId(
-      user.business.business_id,
+      businessId,
     );
-    return employees;
+    const registrationCount = await this.userService.registrationCounts(businessId);
+    const business = await this.businessRepository.findOne({where: {business_id: businessId}, relations: ['projects']});
+    const newProjectsThisMonth = this.newProjects(business); 
+    const projectCount = business.projects.length;
+    return {employees, projectCount, registrationCount, newProjectsThisMonth};
+  }
+
+  newProjects(business: any) {
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const newProjectsThisMonth = business.projects.filter(
+      project => project.created_at >= firstDayOfMonth && project.created_at <= now
+    ).length;
+
+    return newProjectsThisMonth;
   }
 
   findAll() {
@@ -215,5 +230,15 @@ export class BusinessService {
 
   async removeDataFromRedis(key: string) {
     return await this.redisService.del(key);
+  }
+
+  async getClientWithBusiness(id: number){
+    return await this.businessRepository.findOne({where: {business_id: id}, relations: ['clients']});
+  }
+
+  async getBusiness(email: string){
+    const user = await this.userService.findUserWithBusiness(email);
+    const business = user.business;
+    return business;
   }
 }

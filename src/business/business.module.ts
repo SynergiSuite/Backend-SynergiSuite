@@ -14,5 +14,6 @@ import { EmailModule } from 'src/mailer/email.module';
   imports: [TypeOrmModule.forFeature([Business]), DatabaseModule, RedisModule, UserModule, CategoryModule, RolesModule, EmailModule],
   controllers: [BusinessController],
   providers: [BusinessService, RedisService],
+  exports: [BusinessService]
 })
 export class BusinessModule {}

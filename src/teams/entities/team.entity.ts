@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { TeamMember } from './team_members.entity';
 import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
+import { Project } from 'src/projects/entities/project.entity';
 
 @Entity()
 export class Team {
@@ -35,4 +36,7 @@ export class Team {
 
   @OneToMany(() => TeamMember, (member) => member.team, { cascade: true })
   members: TeamMember[];
+
+  @ManyToMany(() => Project, (project) => project.teams)
+  projects: Project[];
 }
