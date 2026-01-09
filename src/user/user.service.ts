@@ -9,17 +9,17 @@ import { Between, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { EmailDto } from 'src/mailer/dto/email.dto';
+import { EmailDto } from '../mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
 import { User } from './entities/user.entity';
-import { EmailService } from 'src/mailer/email.service';
-import { RedisService } from 'src/redis/redis.service';
+import { EmailService } from '../mailer/email.service';
+import { RedisService } from '../redis/redis.service';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { RolesService } from 'src/roles/roles.service';
-import { Business } from 'src/business/entities/business.entity';
+import { RolesService } from '../roles/roles.service';
+import { Business } from '../business/entities/business.entity';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Role } from 'src/roles/entities/role.entity';
+import { Role } from '../roles/entities/role.entity';
 
 @Injectable()
 export class UserService {

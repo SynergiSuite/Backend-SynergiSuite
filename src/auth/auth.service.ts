@@ -12,11 +12,11 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { PayloadDto } from './dto/payload.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { User } from 'src/user/entities/user.entity';
-import { UserService } from 'src/user/user.service';
-import { CreateUserDto } from 'src/user/dto/create-user.dto';
-import { VerificationResponseDto } from 'src/user/dto/response.dto';
-import { RedisService } from 'src/redis/redis.service';
+import { User } from '../user/entities/user.entity';
+import { UserService } from '../user/user.service';
+import { CreateUserDto } from '../user/dto/create-user.dto';
+import { VerificationResponseDto } from '../user/dto/response.dto';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class AuthService {

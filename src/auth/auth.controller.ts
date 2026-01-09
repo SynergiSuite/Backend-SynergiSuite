@@ -1,14 +1,14 @@
 import { Body, Controller, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { PayloadDto } from './dto/payload.dto';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from 'src/user/dto/create-user.dto';
+import { CreateUserDto } from "../user/dto/create-user.dto"
 import {
   userAlreadyExistGuard,
   userExistGuard,
   userNotVerified,
-} from 'src/user/user.guard';
+} from '../user/user.guard';
 import { Request } from 'express';
-import { JwtGuard } from 'src/shared/auth.guard';
+import { JwtGuard } from '../shared/auth.guard';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 @Controller('auth')

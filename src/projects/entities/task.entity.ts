@@ -15,7 +15,7 @@ import {
   IsEnum,
   IsDate,
 } from 'class-validator';
-import { Project } from 'src/projects/entities/project.entity';
+import { Project } from '../../projects/entities/project.entity';
 
 export enum TaskStatus {
   TODO = 'todo',

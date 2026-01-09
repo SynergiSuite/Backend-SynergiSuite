@@ -3,8 +3,8 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { projectCreationGuard, roleGuard } from './project.guard';
-import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
-import { JwtGuard } from 'src/shared/auth.guard';
+import { IsVerifiedGuard } from '../shared/isVerified.guard';
+import { JwtGuard } from '../shared/auth.guard';
 import { Request } from 'express';
 
 @Controller('projects')

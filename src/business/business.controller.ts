@@ -14,9 +14,9 @@ import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { Request } from 'express';
 import { InviteDto } from './dto/send-invitation.dto';
-import { JwtGuard } from 'src/shared/auth.guard';
+import { JwtGuard } from '../shared/auth.guard';
 import { businessAcceptInvitationGuard, businessAlreadyExistsGuard, checkHasBusiness, businessInvitationGuard } from './business.guard';
-import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
+import { IsVerifiedGuard } from '../shared/isVerified.guard';
 
 @Controller('business')
 export class BusinessController {

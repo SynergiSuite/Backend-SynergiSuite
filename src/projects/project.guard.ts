@@ -1,6 +1,6 @@
 import { BadRequestException, CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
-import { TeamsService } from "src/teams/teams.service";
-import { UserService } from "src/user/user.service";
+import { TeamsService } from "../teams/teams.service";
+import { UserService } from "../user/user.service";
 import { ProjectsService } from "./projects.service";
 
 

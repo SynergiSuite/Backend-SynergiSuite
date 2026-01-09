@@ -8,10 +8,10 @@ import {
   OneToMany,
 } from 'typeorm';
 import { IsInt, MinLength, MaxLength, IsEmail } from 'class-validator';
-import { Business } from 'src/business/entities/business.entity';
-import { Role } from 'src/roles/entities/role.entity';
-import { TeamMember } from 'src/teams/entities/team_members.entity';
-import { Team } from 'src/teams/entities/team.entity';
+import { Business } from '../../business/entities/business.entity';
+import { Role } from '../../roles/entities/role.entity';
+import { TeamMember } from '../../teams/entities/team_members.entity';
+import { Team } from '../../teams/entities/team.entity';
 
 @Entity({ name: 'users' })
 export class User {

@@ -1,6 +1,6 @@
 import { BadRequestException, CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
-import { BusinessService } from "src/business/business.service";
-import { UserService } from "src/user/user.service";
+import { BusinessService } from "../business/business.service";
+import { UserService } from "../user/user.service";
 
 @Injectable()
 export class roleGuard implements CanActivate {

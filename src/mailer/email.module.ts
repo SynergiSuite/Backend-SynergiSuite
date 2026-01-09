@@ -25,7 +25,7 @@ import { join } from 'path';
           from: configService.get('MAIL_SENDER'),
         },
         template: {
-          dir: join(process.cwd(), 'src/mailer/templates'), // Path to your templates folder
+          dir: join(process.cwd(), '../mailer/templates'), // Path to your templates folder
           adapter: new EjsAdapter(), // Template engine adapter
           options: {
             strict: false,

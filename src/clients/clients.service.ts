@@ -4,9 +4,9 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { Client } from './entities/client.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProjectsService } from 'src/projects/projects.service';
-import { UserService } from 'src/user/user.service';
-import { BusinessService } from 'src/business/business.service';
+import { ProjectsService } from '../projects/projects.service';
+import { UserService } from '../user/user.service';
+import { BusinessService } from '../business/business.service';
 
 @Injectable()
 export class ClientsService {

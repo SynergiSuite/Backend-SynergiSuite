@@ -2,11 +2,11 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Quer
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import {  UpdateTeamDto } from './dto/update-team.dto';
-import { JwtGuard } from 'src/shared/auth.guard';
-import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
+import { JwtGuard } from '../shared/auth.guard';
+import { IsVerifiedGuard } from '../shared/isVerified.guard';
 import { AddTeamMembersGuard, createTeamGuard, RemoveTeamMembersGuard, roleGuard } from './team.guard';
 import { Request } from 'express';
-import { checkHasBusiness } from 'src/business/business.guard';
+import { checkHasBusiness } from '../business/business.guard';
 import { validAuthorizationGuard } from './team.guard';
 
 @Controller('teams')

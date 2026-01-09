@@ -5,14 +5,13 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
-  OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { Category } from 'src/category/entities/category.entity';
-import { Team } from 'src/teams/entities/team.entity';
-import { Project } from 'src/projects/entities/project.entity';
-import { Client } from 'src/clients/entities/client.entity';
+import { User } from '../../user/entities/user.entity';
+import { Category } from '../../category/entities/category.entity';
+import { Team } from '../../teams/entities/team.entity';
+import { Project } from '../../projects/entities/project.entity';
+import { Client } from '../../clients/entities/client.entity';
 
 @Entity({ name: 'business' })
 export class Business {
