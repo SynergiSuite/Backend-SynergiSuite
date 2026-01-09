@@ -275,4 +275,12 @@ export class TeamsService {
   return true;
 }
 
+  async findValidTeam(teamId: string, businessId: number): Promise<boolean> {
+    const team = await this.teamRepository.findOne({ where: { id: teamId }, relations: ['business'] });
+    if (!team || team.business.business_id !== businessId) {
+      return false;
+    }
+    return true;
+  }
+
 }

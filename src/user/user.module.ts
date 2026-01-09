@@ -16,7 +16,7 @@ import { JwtService } from '@nestjs/jwt';
     EmailModule,
     DatabaseModule,
     RedisModule,
-    RolesModule,
+    RolesModule
   ],
   controllers: [UserController],
   providers: [UserService, RedisService, JwtService],

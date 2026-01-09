@@ -10,7 +10,7 @@ import { TeamsModule } from 'src/teams/teams.module';
 import { ClientsModule } from 'src/clients/clients.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Project, Task]), UserModule, forwardRef(() => ClientsModule), BusinessModule, TeamsModule],
+  imports: [TypeOrmModule.forFeature([Project, Task]), forwardRef(() => UserModule), forwardRef(() => ClientsModule), BusinessModule, TeamsModule],
   controllers: [ProjectsController],
   providers: [ProjectsService],
   exports: [ProjectsService]

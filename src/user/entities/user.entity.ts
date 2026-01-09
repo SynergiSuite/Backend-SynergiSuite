@@ -55,5 +55,5 @@ export class User {
 
   @OneToMany(() => Team, (team) => team.leader)
   leads: Team[];
-}
 
+}

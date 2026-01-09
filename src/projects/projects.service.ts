@@ -9,6 +9,8 @@ import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { Task } from './entities/task.entity';
 import { ClientsService } from 'src/clients/clients.service';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -73,6 +75,118 @@ export class ProjectsService {
     }
   }
 
+  async createTask(reqObj: any, createTaskDto: CreateTaskDto): Promise<any> {
+    this.logger.log(`Creating task: ${createTaskDto.title}`);
+    console.log(createTaskDto.dueDate)
+    try {
+      // Project/business validation handled by guards.
+      const project = await this.projectRepository.findOne({ 
+        where: { id: createTaskDto.projectId },
+        relations: ['business']
+      });
+
+      const teams = await this.teamService.findOne(createTaskDto.assignedID)
+      
+      // Create the task
+      const task = this.taskRepository.create({
+        title: createTaskDto.title,
+        description: createTaskDto.description,
+        status: createTaskDto.status,
+        due_date: createTaskDto.dueDate,
+        priority: createTaskDto.priority,
+        project: project,
+        teams: [teams]
+      });
+      
+      const result = await this.taskRepository.save(task);
+      this.logger.log(`Task created successfully.`);
+      return {
+        message: "New task created successfully.",
+        task: result
+      };
+    } catch (error) {
+      this.logger.error(`Error creating task: ${createTaskDto.title}`, error.message);
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async updateTask(updateTaskDto: UpdateTaskDto): Promise<any> {
+    this.logger.log(`Getting task for updating with id: ${updateTaskDto.id}`);
+    try {
+      const task = await this.findOneTask(updateTaskDto.id)
+
+      if (updateTaskDto.title !== undefined) {
+        task.title = updateTaskDto.title;
+      }
+      if (updateTaskDto.description !== undefined) {
+        task.description = updateTaskDto.description;
+      }
+      if (updateTaskDto.status !== undefined) {
+        task.status = updateTaskDto.status;
+      }
+      if (updateTaskDto.priority !== undefined) {
+        task.priority = updateTaskDto.priority;
+      }
+      if (updateTaskDto.due_date !== undefined) {
+        task.due_date = updateTaskDto.due_date;
+      }
+
+      const result = await this.taskRepository.save(task);
+      this.logger.log(`Task updated successfully.`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Error updating task: ${updateTaskDto.id}`,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async getProjects(token: string): Promise<any> {
+    this.logger.log(`Getting projects for token: ${token}`);
+    try {
+      const project = await this.projectRepository.findOne({ 
+        where: { id: token },
+        relations: ['tasks', 'tasks.teams']
+      });
+
+      if (!project) {
+        throw new HttpException('Project not found', HttpStatus.NOT_FOUND);
+      }
+
+      return project.tasks;
+    } catch (error) {
+      this.logger.error(`Error getting projects for token: ${token}`, error.message);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async getProjectTeams(reqObj: any, projectId: string): Promise<any> {
+    this.logger.log(`Getting project teams for project: ${projectId}`);
+    try {
+      const project = await this.projectRepository.findOne({ 
+        where: { id: projectId },
+        relations: ['teams']
+      });
+      
+      if (!project) {
+        throw new HttpException('Project not found', HttpStatus.NOT_FOUND);
+      }
+      
+      return project.teams;
+    } catch (error) {
+      this.logger.error(`Error getting project teams: ${projectId}`, error.message);
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
 
   findOne(id: number) {
     return `This action returns a #${id} project`;
@@ -105,6 +219,28 @@ export class ProjectsService {
       return projects;
     } catch (error) {
       this.logger.error(`Error getting all projects`, error.message);
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  findOneTask(id: string): Promise<Task> {
+    this.logger.log(`Getting task: ${id}`);
+    try {
+      const task = this.taskRepository.findOne({
+        where: { id },
+        relations: ['project', 'teams'],
+      });
+
+      if (!task) {
+        throw new HttpException('Task not found', HttpStatus.NOT_FOUND);
+      }
+
+      return task;
+    } catch (error) {
+      this.logger.error(`Error getting task: ${id}`, error.message);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }

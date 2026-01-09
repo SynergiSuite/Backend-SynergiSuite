@@ -4,6 +4,7 @@ import { TeamMember } from './team_members.entity';
 import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
 import { Project } from 'src/projects/entities/project.entity';
+import { Task } from 'src/projects/entities/task.entity';
 
 @Entity()
 export class Team {
@@ -39,4 +40,7 @@ export class Team {
 
   @ManyToMany(() => Project, (project) => project.teams)
   projects: Project[];
+
+  @ManyToMany(() => Task, (task) => task.teams)
+  tasks: Task[];
 }
