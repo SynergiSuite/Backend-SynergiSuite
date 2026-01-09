@@ -1,9 +1,18 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UserModule } from './user/user.module';
+import { AuthModule } from './auth/auth.module';
+import { BusinessModule } from './business/business.module';
+import { CategoryModule } from './category/category.module';
+import { RolesModule } from './roles/roles.module';
+import { TeamsModule } from './teams/teams.module';
+import { ProjectsModule } from './projects/projects.module';
+import { ClientsModule } from './clients/clients.module';
+
 
 @Module({
-  imports: [],
+  imports: [UserModule, AuthModule, BusinessModule, CategoryModule, RolesModule, TeamsModule, ProjectsModule, ClientsModule],
   controllers: [AppController],
   providers: [AppService],
 })

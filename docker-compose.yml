@@ -1,0 +1,56 @@
+version: '3.9'
+
+services:
+  app:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development   # <- run in dev mode
+    container_name: synergisuite-api
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+    volumes:
+      - .:/app
+      - /app/node_modules
+      # - /app/dist
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: synergisuite-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    networks:
+      - app-network
+
+volumes:
+  redis-data:
+
+networks:
+  app-network:
+    driver: bridge

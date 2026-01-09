@@ -1,0 +1,59 @@
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToOne,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
+import { IsInt, MinLength, MaxLength, IsEmail } from 'class-validator';
+import { Business } from 'src/business/entities/business.entity';
+import { Role } from 'src/roles/entities/role.entity';
+import { TeamMember } from 'src/teams/entities/team_members.entity';
+import { Team } from 'src/teams/entities/team.entity';
+
+@Entity({ name: 'users' })
+export class User {
+  @PrimaryGeneratedColumn()
+  @IsInt()
+  user_id: number;
+
+  @Column({ nullable: false })
+  @MinLength(3, {
+    message: 'Name is too short to register. Try Using your full name',
+  })
+  @MaxLength(20, { message: 'Name is too long!' })
+  name: string;
+
+  @Column({ nullable: false, unique: true })
+  @IsEmail()
+  email: string;
+
+  @Column({ nullable: false })
+  password_hash: string;
+
+  @Column({ nullable: true })
+  token_digest: string;
+
+  @Column({ nullable: false, default: false })
+  is_Verified: boolean;
+
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  registration_date: Date;
+
+  @ManyToOne(() => Business, (business) => business.users)
+  @JoinColumn({ name: 'business_id' })
+  business: Business;
+
+  @ManyToOne(() => Role, (role) => role.users)
+  @JoinColumn({ name: 'role_id' })
+  role: Role;
+
+  @OneToMany(() => TeamMember, (member) => member.user)
+  teamMemberships: TeamMember[];
+
+  @OneToMany(() => Team, (team) => team.leader)
+  leads: Team[];
+}
+
