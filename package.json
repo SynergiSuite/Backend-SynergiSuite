@@ -20,7 +20,6 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@css-inline/css-inline-darwin-arm64": "^0.14.3",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.3",
@@ -28,7 +27,7 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^10.0.3",
-    "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/platform-express": "^10.4.21",
     "@nestjs/typeorm": "^10.0.2",
     "@types/bcrypt": "^5.0.2",
     "@types/passport-jwt": "^4.0.1",
@@ -43,7 +42,8 @@
     "pg": "^8.13.0",
     "redis": "^4.7.0",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "serverless-http": "^4.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
