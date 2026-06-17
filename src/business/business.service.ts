@@ -66,21 +66,40 @@ export class BusinessService {
   // Send invitations
   async sendInvitation(reqObj: any, inviteDto: InviteDto) {
     this.logger.log(
-      `Initiating to send invitation to: ${inviteDto.email} from ${reqObj.email}`,
+      `[InviteUser] Service started | invitingUser=${reqObj.email} | invitedEmail=${inviteDto.email} | roleId=${inviteDto.role_id}`,
     );
+    this.logger.log(`[InviteUser] Looking up invited user | invitedEmail=${inviteDto.email}`);
     const invitedUser = await this.userService.findByEmail(inviteDto.email);
-    this.logger.log(`Invited user found: ${invitedUser.email}`);
+    this.logger.log(
+      `[InviteUser] Invited user lookup result | invitedEmail=${inviteDto.email} | found=${Boolean(invitedUser)} | userId=${invitedUser?.user_id ?? 'none'} | isVerified=${invitedUser?.is_Verified ?? 'unknown'}`,
+    );
+    this.logger.log(`[InviteUser] Looking up inviting user with business | invitingUser=${reqObj.email}`);
     const user = await this.userService.findUserAndBusinessByEmail(
       reqObj.email,
     );
+    this.logger.log(
+      `[InviteUser] Inviting user lookup result | invitingUser=${reqObj.email} | found=${Boolean(user)} | businessId=${user?.business?.business_id ?? 'none'} | roleId=${user?.role?.id ?? 'none'}`,
+    );
+    this.logger.log(`[InviteUser] Looking up invited role | roleId=${inviteDto.role_id}`);
     const role = await this.roleService.findOne(inviteDto.role_id);
+    this.logger.log(
+      `[InviteUser] Role lookup result | roleId=${inviteDto.role_id} | found=${Boolean(role)} | roleName=${role?.name ?? 'none'}`,
+    );
+
     if (!invitedUser || !role) {
       this.logger.warn(
-        'No account found linked with this mail. Only verified users can be invited.',
+        `[InviteUser] Service rejected | invitedFound=${Boolean(invitedUser)} | roleFound=${Boolean(role)} | invitedEmail=${inviteDto.email} | roleId=${inviteDto.role_id}`,
       );
       throw new BadRequestException(
         'No account found linked with this mail. Only verified users can be invited.',
       );
+    }
+
+    if (!user || !user.business || !user.role) {
+      this.logger.error(
+        `[InviteUser] Service rejected | inviting user missing business or role | invitingUser=${reqObj.email} | userFound=${Boolean(user)} | hasBusiness=${Boolean(user?.business)} | hasRole=${Boolean(user?.role)}`,
+      );
+      throw new BadRequestException('Inviting user does not have a valid business profile.');
     }
 
     const emailObj = {
@@ -93,26 +112,38 @@ export class BusinessService {
       name: invitedUser.name,
       heading: 'You were invited to join an organization',
     };
+    this.logger.log(
+      `[InviteUser] Email payload prepared | to=${emailObj.to} | invitedBy=${emailObj.invited_by} | invitingRole=${emailObj.invited_bys_role} | business=${emailObj.business}`,
+    );
 
     try {
-      this.logger.log('Generating invitation token');
+      this.logger.log(`[InviteUser] Generating invitation token | invitedEmail=${invitedUser.email} | invitedBy=${reqObj.email} | roleId=${role.id}`);
       const token = await this.redisService.generateTokenForInvitation(
         invitedUser.email,
         reqObj.email,
         role.id,
       );
-      this.logger.log('Invitation token generated');
-      this.logger.log('Sending invitation email');
-      await this.mailerService.sendInvitationEmail(emailObj, token);
-      this.logger.log('Invitation email sent');
+      this.logger.log(`[InviteUser] Invitation token generated | invitedEmail=${invitedUser.email} | tokenLength=${token.length}`);
+      this.logger.log(`[InviteUser] Sending invitation email | invitedEmail=${invitedUser.email}`);
+      const emailSent = await this.mailerService.sendInvitationEmail(emailObj, token);
+      this.logger.log(
+        `[InviteUser] Invitation email provider result | invitedEmail=${invitedUser.email} | sent=${emailSent}`,
+      );
 
+      if (!emailSent) {
+        throw new RequestTimeoutException('Mailer failed to send invitation email.');
+      }
+
+      this.logger.log(`[InviteUser] Service completed | invitedEmail=${invitedUser.email} | invitedBy=${reqObj.email}`);
       return {
         message: 'Invitation token was sent out successfully.',
         invitation_token: token,
       };
     } catch (error) {
-      this.logger.error('Failed to send invitation email');
-      this.logger.error(error.message);
+      this.logger.error(
+        `[InviteUser] Service failed | invitingUser=${reqObj.email} | invitedEmail=${inviteDto.email} | roleId=${inviteDto.role_id} | error=${error.message}`,
+        error.stack,
+      );
       throw new RequestTimeoutException(
         'Something went wrong: ' + error.message,
       );
@@ -234,6 +265,10 @@ export class BusinessService {
 
   async getClientWithBusiness(id: number){
     return await this.businessRepository.findOne({where: {business_id: id}, relations: ['clients']});
+  }
+
+  async getProjectsWithBusiness(id: number){
+    return await this.businessRepository.findOne({where: {business_id: id}, relations: ['projects']});
   }
 
   async getBusiness(email: string){

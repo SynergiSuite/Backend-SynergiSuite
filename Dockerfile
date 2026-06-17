@@ -1,5 +1,5 @@
 # --- Base image ---
-    FROM node:18-bullseye AS base
+    FROM node:22-bullseye AS base
 
     WORKDIR /app
     

@@ -15,9 +15,17 @@ services:
     depends_on:
       redis:
         condition: service_started
+      minio: # <-- Added dependency
+        condition: service_started
     environment:
       - NODE_ENV=development
       - PORT=3002
+      # Added these for your backend to connect to MinIO:
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_S3_ENDPOINT=http://minio:9000 
+      - S3_BUCKET_NAME=synergisuite-resources
     volumes:
       - .:/app
       - /app/node_modules
@@ -48,8 +56,27 @@ services:
     networks:
       - app-network
 
+  # --- NEW STORAGE VAULT ---
+  minio:
+    image: minio/minio:latest
+    container_name: synergisuite-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000" # API Port (Used by Frontend & Backend)
+      - "9001:9001" # Web Dashboard Port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - app-network
+
 volumes:
   redis-data:
+  minio-data: # <-- Added persistent volume for uploaded files
 
 networks:
   app-network:

@@ -6,6 +6,7 @@ export class VerificationResponseDto {
   email?: string;
   message?: string;
   isVerified?: boolean;
+  user_id?: number;
   user?: User;
   error?: string;
   status?: HttpStatus;

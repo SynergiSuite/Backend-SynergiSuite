@@ -5,12 +5,14 @@ import { UserService } from 'src/user/user.service';
 import { BusinessService } from 'src/business/business.service';
 import { TeamsService } from 'src/teams/teams.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { Task } from './entities/task.entity';
 import { ClientsService } from 'src/clients/clients.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateTeamDto } from './dto/update-team.dto';
+import { MilestoneService } from 'src/milestone/milestone.service';
 
 @Injectable()
 export class ProjectsService {
@@ -23,7 +25,8 @@ export class ProjectsService {
     private readonly userService: UserService,
     private  businessService: BusinessService,
     private readonly teamService: TeamsService,
-    private readonly clientService: ClientsService
+    private readonly clientService: ClientsService,
+    private readonly milestoneService: MilestoneService
   ) {}
 
 
@@ -42,6 +45,7 @@ export class ProjectsService {
         name: createProjectDto.name,
         description: createProjectDto.description,
         status: createProjectDto.status,
+        duration: createProjectDto.duration,
         business,
         teams,
         client
@@ -77,7 +81,6 @@ export class ProjectsService {
 
   async createTask(reqObj: any, createTaskDto: CreateTaskDto): Promise<any> {
     this.logger.log(`Creating task: ${createTaskDto.title}`);
-    console.log(createTaskDto.dueDate)
     try {
       // Project/business validation handled by guards.
       const project = await this.projectRepository.findOne({ 
@@ -85,7 +88,13 @@ export class ProjectsService {
         relations: ['business']
       });
 
-      const teams = await this.teamService.findOne(createTaskDto.assignedID)
+      const milestone = createTaskDto.milestoneId
+        ? await this.milestoneService.findOneWithId(createTaskDto.milestoneId)
+        : null;
+
+      const team = createTaskDto.assigneeId
+        ? await this.teamService.findOne(createTaskDto.assigneeId)
+        : null;
       
       // Create the task
       const task = this.taskRepository.create({
@@ -95,7 +104,8 @@ export class ProjectsService {
         due_date: createTaskDto.dueDate,
         priority: createTaskDto.priority,
         project: project,
-        teams: [teams]
+        teams: team ? [team] : [],
+        milestone: milestone
       });
       
       const result = await this.taskRepository.save(task);
@@ -109,6 +119,13 @@ export class ProjectsService {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
+
+  async getProjectDetails(projectName: string): Promise<Project> {
+    this.logger.log(`Initiating to find project`)
+    const project = await this.projectRepository.findOne({ where: { name: projectName }, relations: ['tasks', 'teams', 'client'] });
+    this.logger.log(`Project found: ${project.name}`);
+    return project;
+  };
 
   async updateTask(updateTaskDto: UpdateTaskDto): Promise<any> {
     this.logger.log(`Getting task for updating with id: ${updateTaskDto.id}`);
@@ -187,9 +204,89 @@ export class ProjectsService {
     }
   }
 
+  async updateTeamProject(updateTeamDto: UpdateTeamDto): Promise<any> {
+    this.logger.log(
+      `Updating teams for project: ${updateTeamDto.project_id}`,
+    );
+    try {
+      if (!updateTeamDto.team_id || updateTeamDto.team_id.length === 0) {
+        throw new HttpException('No teams provided', HttpStatus.BAD_REQUEST);
+      }
 
-  findOne(id: number) {
-    return `This action returns a #${id} project`;
+      const project = await this.projectRepository.findOne({
+        where: { id: updateTeamDto.project_id },
+        relations: ['teams'],
+      });
+
+      if (!project) {
+        throw new HttpException('Project not found', HttpStatus.NOT_FOUND);
+      }
+
+      const teams = await this.teamService.findTeams(updateTeamDto.team_id);
+      if (teams.length !== updateTeamDto.team_id.length) {
+        throw new HttpException(
+          'One or more teams not found',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      project.teams = teams;
+      const result = await this.projectRepository.save(project);
+      this.logger.log(`Project teams updated successfully.`);
+
+      return {
+        message: 'Project teams updated successfully.',
+        project: result,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error updating project teams: ${updateTeamDto.project_id}`,
+        error.message,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async deleteTask(id: string) {
+    this.logger.log(`Deleting task: ${id}`);
+    try {
+      const task = await this.taskRepository.findOne({
+        where: { id },
+        relations: ['teams'],
+      });
+
+      await this.taskRepository.manager.transaction(async (manager) => {
+        if (task.teams?.length) {
+          await manager
+            .createQueryBuilder()
+            .relation(Task, 'teams')
+            .of(task)
+            .remove(task.teams);
+        }
+
+        await manager.remove(Task, task);
+      });
+
+      this.logger.log(`Task deleted successfully.`);
+      return { message: 'Task deleted successfully.' };
+    } catch (error) {
+      this.logger.error(`Error deleting task: ${id}`, error.message);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+
+  findOneWithBusiness(id: string) {
+    return this.projectRepository.findOne({
+      where: { id },
+      relations: ['business']
+    });
   }
 
   update(id: number, updateProjectDto: UpdateProjectDto) {
@@ -212,6 +309,14 @@ export class ProjectsService {
     return true;
   }
 
+  findProjectsById(id: string) { 
+    const project = this.projectRepository.findOne({where:{id}, relations: ['business']});
+    if(project){
+      return project;
+    }
+    return false;
+  }
+
   findAll() {
     try {
       this.logger.log(`Getting all projects`);
@@ -228,7 +333,7 @@ export class ProjectsService {
     try {
       const task = this.taskRepository.findOne({
         where: { id },
-        relations: ['project', 'teams'],
+        relations: ['project', 'project.business', 'teams'],
       });
 
       if (!task) {
@@ -245,4 +350,12 @@ export class ProjectsService {
     }
   }
 
+  async findProjectsByTeams(teamIds: string[]): Promise<Project[]> {
+    if (!teamIds || teamIds.length === 0) return [];
+    
+    const projects = await this.projectRepository.find({
+      where: { teams: { id: In(teamIds) } },
+    });
+    return projects;
+  }
 }

@@ -49,29 +49,49 @@ export class businessInvitationGuard implements CanActivate {
     const invitingUser = request.user
     const invitedUser = request.body
 
+    this.logger.log(
+      `[InviteUser] Guard started | invitingUser=${invitingUser?.email ?? 'unknown'} | invitedEmail=${invitedUser?.email ?? 'missing'} | roleId=${invitedUser?.role_id ?? 'missing'}`,
+    );
 
-    if (!invitedUser.email && !invitingUser) {
+    if (!invitingUser) {
+      this.logger.error('[InviteUser] Guard failed | authenticated user missing');
       throw new UnauthorizedException('User not found');
     }
 
-    this.logger.log(`Checking if user is verified: ${invitingUser.email}`);
+    if (!invitedUser?.email) {
+      this.logger.error(
+        `[InviteUser] Guard failed | invited email missing | invitingUser=${invitingUser.email}`,
+      );
+      throw new BadRequestException('Invited user email is required.');
+    }
+
+    this.logger.log(`[InviteUser] Guard checking verification | invitingUser=${invitingUser.email}`);
     const isVerifiedUser = await this.userService.isUserverified(invitingUser.email);
-    this.logger.log(`Checking if inviting user already has a business: ${invitingUser.email}`);
+    this.logger.log(
+      `[InviteUser] Guard verification result | invitingUser=${invitingUser.email} | isVerified=${isVerifiedUser}`,
+    );
+    this.logger.log(`[InviteUser] Guard checking inviting user business | invitingUser=${invitingUser.email}`);
     const invitingUserDetails = await this.userService.userHasBusinessCheck(invitingUser.email);
-    this.logger.log(`Checking if invited user already has a business: ${invitedUser.email}`)
+    this.logger.log(
+      `[InviteUser] Guard inviting user business result | invitingUser=${invitingUser.email} | hasBusiness=${Boolean(invitingUserDetails)} | businessId=${invitingUserDetails ? invitingUserDetails.business_id : 'none'}`,
+    );
+    this.logger.log(`[InviteUser] Guard checking invited user business | invitedEmail=${invitedUser.email}`)
     const invitedUserDetails = await this.userService.userHasBusinessCheck(invitedUser.email);
+    this.logger.log(
+      `[InviteUser] Guard invited user business result | invitedEmail=${invitedUser.email} | hasBusiness=${Boolean(invitedUserDetails)} | businessId=${invitedUserDetails ? invitedUserDetails.business_id : 'none'}`,
+    );
 
     if (invitedUserDetails) {
-      this.logger.error(`User already has a registered Business: ${invitedUser.email}`)
+      this.logger.error(`[InviteUser] Guard rejected | invited user already has business | invitedEmail=${invitedUser.email}`)
       throw new BadRequestException('User already has a registered Business.');
     }
 
     if (!invitingUserDetails) {
-      this.logger.error(`User does not have a registered Businessssss: ${invitingUser.email}`)
+      this.logger.error(`[InviteUser] Guard rejected | inviting user has no business | invitingUser=${invitingUser.email}`)
       throw new BadRequestException('User does not have a registered Business.');
     }
 
-    this.logger.log(`User is eligible to invite ${invitedUser}: ${invitingUser.email}`)
+    this.logger.log(`[InviteUser] Guard passed | invitingUser=${invitingUser.email} | invitedEmail=${invitedUser.email}`)
     return true;
   } 
 }

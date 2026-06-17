@@ -24,6 +24,9 @@ export class CreateProjectDto {
   @IsInt({ message: 'Status must be an integer' })
   status: number;
 
+  @IsString({ message: 'Duration must be a string' })
+  duration: string;
+
   @IsArray({ message: 'Teams must be an array of team IDs' })
   @ArrayNotEmpty({ message: 'At least one team must be provided' })
   @ArrayUnique({ message: 'Team IDs must be unique' })

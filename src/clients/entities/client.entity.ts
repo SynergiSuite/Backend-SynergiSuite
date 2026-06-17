@@ -36,6 +36,10 @@ export class Client {
   @IsString({ message: 'Address must be a string' })
   address: string;
 
+  @Column({ nullable: true })
+  @IsString({ message: 'Company must be a string' })
+  company: string;
+
   @Column()
   @IsInt()
   priority: number;

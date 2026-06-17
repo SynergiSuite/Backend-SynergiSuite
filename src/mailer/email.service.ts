@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailDto } from './dto/email.dto';
 import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class EmailService {
+  private readonly logger = new Logger(EmailService.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
@@ -43,6 +45,9 @@ export class EmailService {
     const text = token;
     const name = obj.name;
     const heading = obj.heading;
+    this.logger.log(
+      `[InviteUser] Mailer started | to=${to} | subject=${subject} | invitedBy=${invited_by} | business=${business} | tokenLength=${token.length}`,
+    );
     try {
       await this.mailerService.sendMail({
         to,
@@ -57,9 +62,13 @@ export class EmailService {
           business
         },
       });
+      this.logger.log(`[InviteUser] Mailer completed | to=${to}`);
       return true;
     } catch (error) {
-      console.log(error.message);
+      this.logger.error(
+        `[InviteUser] Mailer failed | to=${to} | subject=${subject} | error=${error.message}`,
+        error.stack,
+      );
       return false;
     }
   }

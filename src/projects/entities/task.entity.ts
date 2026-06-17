@@ -19,6 +19,7 @@ import {
 } from 'class-validator';
 import { Project } from 'src/projects/entities/project.entity';
 import { Team } from 'src/teams/entities/team.entity';
+import { Milestone } from 'src/milestone/entities/milestone.entity';
 
 export enum TaskStatus {
   TODO = 'todo',
@@ -77,6 +78,13 @@ export class Task {
   })
   @JoinColumn({ name: 'project_id' })
   project: Project;
+
+  @ManyToOne(() => Milestone, (milestone) => milestone.tasks, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'milestone_id' })
+  milestone?: Milestone;
 
   @ManyToMany(() => Team, (team) => team.tasks)
   @JoinTable({

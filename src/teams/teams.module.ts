@@ -6,6 +6,7 @@ import { Team } from './entities/team.entity';
 import { TeamMember } from './entities/team_members.entity';
 import { BusinessModule } from 'src/business/business.module';
 import { UserModule } from 'src/user/user.module';
+import { AddTeamMembersGuard, createTeamGuard, RemoveTeamMembersGuard, roleGuard, teamProgressGuard, validAuthorizationGuard } from './team.guard';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { UserModule } from 'src/user/user.module';
     UserModule,
   ],
   controllers: [TeamsController],
-  providers: [TeamsService],
+  providers: [TeamsService, createTeamGuard, validAuthorizationGuard, teamProgressGuard, roleGuard, AddTeamMembersGuard, RemoveTeamMembersGuard],
   exports: [TeamsService],
 })
 export class TeamsModule {}

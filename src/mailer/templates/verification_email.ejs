@@ -4,66 +4,114 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Verification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f9f9f9;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+            height: 100% !important;
+            background-color: #0A0A0B;
+            -webkit-font-smoothing: antialiased;
         }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        table {
+            border-spacing: 0 !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+            margin: 0 auto !important;
         }
-        .header {
+        a {
+            text-decoration: none;
+            color: #adc6ff;
+            transition: color 0.2s ease;
+        }
+        a:hover {
+            color: #4edea3;
+        }
+        .main-card {
+            background-color: #1d2022;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        .code-container {
+            background-color: #0566d9;
+            color: #ffffff;
+            font-family: 'Inter', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 6px;
+            border-radius: 16px;
+            box-shadow: 0 0 20px rgba(5, 102, 217, 0.4);
             text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h1 {
-            font-size: 24px;
-            color: #007BFF;
-        }
-        .content {
-            margin-bottom: 20px;
-        }
-        .content p {
-            margin: 10px 0;
-        }
-        .code {
-            font-weight: bold;
-            font-size: 18px;
-            color: #007BFF;
-            text-align: center;
-            margin: 20px 0;
-        }
-        .footer {
-            text-align: center;
-            font-size: 14px;
-            color: #666;
-            margin-top: 20px;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1><%= heading %>, <%= name %>!</h1>
-        </div>
-        <div class="content">
-            <p>Hey <%= name %>,</p>
-            <p>Great to see you aboard! Let's quickly verify your email to get you started.</p>
-            <p class="code"><%= text %></p>
-            <p>Remember, this code is valid only for the next 3 hours. We can't wait for you to explore all the amazing features we have to offer!</p>
-        </div>
-        <div class="footer">
-            <p>Cheers,<br><%= name %></p>
-        </div>
-    </div>
+<body style="background-color: #0A0A0B; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #0A0A0B; min-height: 100vh; padding: 40px 20px;">
+        <tr>
+            <td align="center" valign="top">
+                <!-- Outer Container -->
+                <table width="100%" max-width="600" style="max-width: 600px;" border="0" cellpadding="0" cellspacing="0">
+                    <!-- Header -->
+                    <tr>
+                        <td align="center" style="padding-bottom: 24px;">
+                            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700; color: #e0e3e5; letter-spacing: 1px; display: inline-flex; align-items: center; gap: 8px;">
+                                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #0566d9; box-shadow: 0 0 8px #0566d9;"></span>
+                                SYNERGISUITE
+                            </span>
+                        </td>
+                    </tr>
+                    <!-- Main Card -->
+                    <tr>
+                        <td class="main-card" style="padding: 40px 32px; text-align: left;">
+                            <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 24px; text-align: center;">
+                                <%= heading %>, <%= name %>!
+                            </h1>
+                            <p style="font-size: 16px; line-height: 1.6; color: #c7c6ca; margin-top: 0; margin-bottom: 24px; text-align: center;">
+                                Hey <%= name %>, Great to see you aboard! Let's quickly verify your email to get you started.
+                            </p>
+                            <!-- Code Container Box -->
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+                                <tr>
+                                    <td class="code-container" style="padding: 16px 24px;">
+                                        <%= text %>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="font-size: 14px; line-height: 1.5; color: #919094; text-align: center; margin-top: 0; margin-bottom: 24px;">
+                                Remember, this code is valid only for the next 3 hours. We can't wait for you to explore all the amazing features we have to offer!
+                            </p>
+                            <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 24px;">
+                            <p style="font-size: 15px; line-height: 1.6; color: #c7c6ca; margin: 0; text-align: center;">
+                                Cheers,<br>
+                                <strong style="color: #e0e3e5;"><%= name %></strong>
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td align="center" style="padding-top: 40px; padding-bottom: 20px;">
+                            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 600; color: #e0e3e5; opacity: 0.8; letter-spacing: 1px;">OBSIDIAN ENTERPRISE</span>
+                            <table border="0" cellpadding="0" cellspacing="0" style="margin-top: 12px; margin-bottom: 12px;">
+                                <tr>
+                                    <td style="font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;">
+                                        <a href="#">Privacy Policy</a>
+                                        <span style="color: #46464a; padding: 0 8px;">•</span>
+                                        <a href="#">Security Protocol</a>
+                                        <span style="color: #46464a; padding: 0 8px;">•</span>
+                                        <a href="#">Contact Support</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="font-size: 12px; color: #46464a; margin: 0; font-family: 'Inter', sans-serif;">
+                                &copy; 2026 SynergiSuite. Secure Intelligence Systems.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

@@ -74,3 +74,31 @@ export class checkClientBusiness implements CanActivate {
         return true;
     }
 }
+
+@Injectable()
+export class editClientGuard implements CanActivate {
+  private readonly logger = new Logger(editClientGuard.name);
+
+  constructor(
+    private readonly userService: UserService,
+    private readonly businessService: BusinessService
+    ) {}
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
+        const request = context.switchToHttp().getRequest();
+        const user = request.user;
+        const { id } = request.params;
+
+        this.logger.log(`Checking if client exists for update: ${id}`);
+        const userDetails = await this.userService.getUserWithBusiness(user.email);
+        const businessDetails = await this.businessService.getClientWithBusiness(userDetails.business.business_id);
+
+        if(!businessDetails || !businessDetails.clients || !businessDetails.clients.find(client => client.id === id)){
+          this.logger.error(`Client does not exist for this business: ${id}`);
+          throw new BadRequestException('Client does not exist for this business.');
+        }
+
+        this.logger.log(`Client exists for update: ${id}`);
+        return true;
+    }
+}
