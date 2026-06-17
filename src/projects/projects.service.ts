@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
-import { UserService } from 'src/user/user.service';
-import { BusinessService } from 'src/business/business.service';
-import { TeamsService } from 'src/teams/teams.service';
+import { UserService } from '../user/user.service';
+import { BusinessService } from '../business/business.service';
+import { TeamsService } from '../teams/teams.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Project } from './entities/project.entity';

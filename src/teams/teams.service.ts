@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from './entities/team.entity';
 import { In, Repository } from 'typeorm';
 import { TeamMember } from './entities/team_members.entity';
-import { UserService } from 'src/user/user.service';
+import { UserService } from '../user/user.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { TaskStatus } from 'src/projects/entities/task.entity';
 

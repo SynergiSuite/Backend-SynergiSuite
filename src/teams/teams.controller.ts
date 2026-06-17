@@ -6,7 +6,7 @@ import { JwtGuard } from 'src/shared/auth.guard';
 import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
 import { AddTeamMembersGuard, createTeamGuard, RemoveTeamMembersGuard, roleGuard, teamProgressGuard } from './team.guard';
 import { Request } from 'express';
-import { checkHasBusiness } from 'src/business/business.guard';
+import { checkHasBusiness } from '../business/business.guard';
 import { validAuthorizationGuard } from './team.guard';
 
 @Controller('teams')

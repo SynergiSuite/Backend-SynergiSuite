@@ -22,15 +22,53 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# Backend-SynergiSuite
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+This is the backend application for the SynergiSuite application. This project is based upon NestJS. that will include all of the APIs and logical working behind the application.
+To start this application the files and working will be provided in this document
+
+## Technologies Used
+
+   1. NestJs (https://docs.nestjs.com/)
+   2. Node  (https://nodejs.org/docs/latest-v20.x/api/index.html)
+   3. Redis (https://redis.io/docs/latest/)
+   4. JWT         (https://jwt.io/introduction)
+   5. PostgreSQL  (https://www.postgresql.org/docs/)
+   6. Mailtrap (https://mailtrap.io/)
 
 ## Project setup
 
-```bash
-$ npm install
-```
+1. Download Node js
+   from: (https://nodejs.org/en/download)
+3. Downlaod NestJS
+   ```bash
+   npm i -g @nestjs/cli
+   ```
+4. Set up Git
+   ```bash
+   ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+   Get-Service -Name ssh-agent | Set-Service -StartupType Manual
+   Start-Service ssh-agent
+   ssh-add c:/Users/YOU/.ssh/id_rsa.pub
+   ```
+
+5. Clone Repository
+   ```bash
+   git clone [url]
+   ```
+   
+   ```bash
+   git checkout [branch]
+   ```
+   
+   ```bash
+   git pull
+   ```
+6. Install dependencies
+
+   ```bash
+   $ npm install
+   ```
 
 ## Compile and run the project
 

@@ -43,4 +43,4 @@ async function bootstrap() {
     logger.warn('NGROK_AUTHTOKEN not set. Skipping ngrok tunnel startup.');
   }
 }
-bootstrap();
+

@@ -4,8 +4,9 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { roleGuard, createClientGuard, checkClientBusiness, editClientGuard } from './client.guard';
 import { Request } from 'express';
-import { JwtGuard } from 'src/shared/auth.guard';
-import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
+import { AuthGuard } from '@nestjs/passport';
+import { JwtGuard } from '../shared/auth.guard';
+import { IsVerifiedGuard } from '../shared/isVerified.guard';
 
 
 @Controller('clients')

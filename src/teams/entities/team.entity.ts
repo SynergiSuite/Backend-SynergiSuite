@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
+import { User } from '../../user/entities/user.entity';
 import { TeamMember } from './team_members.entity';
 import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';

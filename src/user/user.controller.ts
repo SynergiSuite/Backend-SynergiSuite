@@ -11,9 +11,9 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JwtGuard } from 'src/shared/auth.guard';
+import { JwtGuard } from '../shared/auth.guard';
 import { Request } from 'express';
-import { JwtWithVerificationGuard } from 'src/shared/verification.guard';
+import { JwtWithVerificationGuard } from '../shared/verification.guard';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { userExistGuard, userNotVerified } from './user.guard';
 

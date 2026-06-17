@@ -1,6 +1,6 @@
-import { Column, PrimaryGeneratedColumn, OneToOne, Entity, OneToMany } from 'typeorm';
+import { Column, PrimaryGeneratedColumn, Entity, OneToMany } from 'typeorm';
 import { IsInt, IsString } from 'class-validator';
-import { Business } from 'src/business/entities/business.entity';
+import { Business } from '../../business/entities/business.entity';
 
 @Entity({ name: 'categories' })
 export class Category {

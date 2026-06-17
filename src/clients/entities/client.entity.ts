@@ -9,8 +9,8 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { IsString, IsEmail, MaxLength, MinLength, IsOptional, IsInt } from 'class-validator';
-import { Business } from 'src/business/entities/business.entity';
-import { Project } from 'src/projects/entities/project.entity';
+import { Business } from '../../business/entities/business.entity';
+import { Project } from '../../projects/entities/project.entity';
 
 @Entity({ name: 'clients' })
 export class Client {

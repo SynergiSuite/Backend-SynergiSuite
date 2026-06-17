@@ -11,8 +11,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Business } from 'src/business/entities/business.entity';
-import { Team } from 'src/teams/entities/team.entity';
+import { Business } from '../../business/entities/business.entity';
+import { Team } from '../../teams/entities/team.entity';
 import { Task } from './task.entity';
 import { Client } from 'src/clients/entities/client.entity';
 import { Milestone } from 'src/milestone/entities/milestone.entity';
