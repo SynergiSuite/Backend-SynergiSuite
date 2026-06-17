@@ -2,9 +2,9 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Quer
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import {  UpdateTeamDto } from './dto/update-team.dto';
-import { JwtGuard } from '../shared/auth.guard';
-import { IsVerifiedGuard } from '../shared/isVerified.guard';
-import { AddTeamMembersGuard, createTeamGuard, RemoveTeamMembersGuard, roleGuard } from './team.guard';
+import { JwtGuard } from 'src/shared/auth.guard';
+import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
+import { AddTeamMembersGuard, createTeamGuard, RemoveTeamMembersGuard, roleGuard, teamProgressGuard } from './team.guard';
 import { Request } from 'express';
 import { checkHasBusiness } from '../business/business.guard';
 import { validAuthorizationGuard } from './team.guard';
@@ -29,6 +29,12 @@ export class TeamsController {
   @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard)
   getTeamDetails(@Body('team') team_id: string) {
     return this.teamsService.getTeamDetails(team_id);
+  }
+
+  @Get('team-progress/:teamId')
+  @UseGuards(JwtGuard, IsVerifiedGuard, teamProgressGuard)
+  getTeamProgress(@Param('teamId') teamId: string) {
+    return this.teamsService.getTeamProgress(teamId);
   }
 
   @Post('update-team')

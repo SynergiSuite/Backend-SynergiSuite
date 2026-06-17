@@ -27,6 +27,11 @@ export class CreateClientDto {
   @MaxLength(255, { message: 'Address cannot exceed 255 characters' })
   address?: string;
 
+  @IsOptional()
+  @IsString({ message: 'Company must be a string' })
+  @MaxLength(255, { message: 'Company cannot exceed 255 characters' })
+  company?: string;
+
   @IsInt({ message: 'Priority must be an integer' })
   priority: number;
 }

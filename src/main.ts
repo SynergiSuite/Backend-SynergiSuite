@@ -1,58 +1,46 @@
-// import { NestFactory } from '@nestjs/core';
-// import { AppModule } from './app.module';
-// import { Logger } from '@nestjs/common';
-
-// async function bootstrap() {
-//   const app = await NestFactory.create(AppModule, {
-//     logger: ['log', 'error', 'warn', 'debug', 'verbose'],
-//   });
-  
-//   // Enable CORS
-//   app.enableCors({
-//     origin: true, // Allow all origins (you might want to restrict this in production)
-//     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-//   });
-  
-//   const startTime = Date.now();
-//   const logger = new Logger('Bootstrap');
-//   logger.log(`Application is running on: http://localhost:3002 at ${startTime}`);
-//   await app.listen(3002);
-// }
-// bootstrap();
-
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import serverless from 'serverless-http';
-import express from 'express';
+import { AppModule } from './app.module';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import * as ngrok from '@ngrok/ngrok';
 
-const expressApp = express();
-let cachedServer: any;
+async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+  const port = Number(process.env.PORT) || 3002;
+  const app = await NestFactory.create(AppModule, {
+    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+  });
+  
+  // Enable CORS
+  app.enableCors({
+    origin: true, // Allow all origins (you might want to restrict this in production)
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  });
 
-async function bootstrapServer() {
-  if (!cachedServer) {
-    const app = await NestFactory.create(
-      AppModule,
-      new ExpressAdapter(expressApp),
-      {
-        logger: ['log', 'error', 'warn', 'debug', 'verbose'],
-      }
-    );
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+  
+  const startTime = Date.now();
+  await app.listen(port);
+  logger.log(`Application is running on: http://localhost:${port} at ${startTime}`);
 
-    // Enable CORS
-    app.enableCors({
-      origin: true, // Allow all origins (you might want to restrict this in production)
-      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    });
-    
-    await app.init();
-    cachedServer = serverless(expressApp);
+  if (process.env.NGROK_AUTHTOKEN) {
+    try {
+      const listener = await ngrok.forward({
+        addr: port,
+        authtoken: process.env.NGROK_AUTHTOKEN,
+      });
+      logger.log(`ngrok tunnel started: ${listener.url()}`);
+    } catch (error) {
+      logger.error(`Failed to start ngrok tunnel: ${error.message}`);
+    }
+  } else {
+    logger.warn('NGROK_AUTHTOKEN not set. Skipping ngrok tunnel startup.');
   }
-  return cachedServer;
-}
-
-export default async function handler(req: any, res: any) {
-  const server = await bootstrapServer();
-  return server(req, res);
 }
 

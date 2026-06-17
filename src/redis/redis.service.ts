@@ -1,15 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { createClient, RedisClientType } from 'redis';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class RedisService {
+  private readonly logger = new Logger(RedisService.name);
   private redisClient: RedisClientType;
   constructor() {
     this.redisClient = createClient({
-      // redis://default:AYqOAAIncDIzNzdhZjVlZDcyNDM0Nzk2YjFmOWFhZGMxNWNiOTZhMXAyMzU0NzA@summary-quetzal-35470.upstash.io:6379
+      // redis://default:AVJXAAIncDEwNGRhZTIzYjBjYTU0NGFmYjhiNWMyOWE5N2JiMzUzNnAxMjEwNzk@magical-puma-21079.upstash.io:6379
       // 'redis://redis:6379'
-      url: 'redis://default:AYqOAAIncDIzNzdhZjVlZDcyNDM0Nzk2YjFmOWFhZGMxNWNiOTZhMXAyMzU0NzA@summary-quetzal-35470.upstash.io:6379',
+      
+      url: 'redis://default:gQAAAAAAAYu8AAIocDJmMTM1NjQ0NmRiYjI0MDFkYTI3NDJmNmM3NGU1YzdkNHAyMTAxMzA4@hopeful-dingo-101308.upstash.io:6379',
       socket: {
         tls: true,
       },
@@ -30,7 +32,9 @@ export class RedisService {
   }
 
   async setWithExpiration(key: string, value: any, ttl: number): Promise<void> {
+    this.logger.log(`[InviteUser] Redis set with expiration | keyLength=${key.length} | ttl=${ttl}`);
     await this.redisClient.set(key, value, { EX: ttl });
+    this.logger.log(`[InviteUser] Redis set completed | keyLength=${key.length}`);
   }
 
   async generateUpdateEmailCode(
@@ -65,6 +69,9 @@ export class RedisService {
     invitedBy: string,
     invitedAs: number,
   ) {
+    this.logger.log(
+      `[InviteUser] Redis invitation token generation started | invitedEmail=${invited} | invitedBy=${invitedBy} | roleId=${invitedAs}`,
+    );
     const token = await crypto.randomBytes(16).toString('hex');
     const ttl = 3600;
     const obj = {
@@ -75,6 +82,9 @@ export class RedisService {
 
     const jsonObj = JSON.stringify(obj);
     await this.setWithExpiration(token, jsonObj, ttl);
+    this.logger.log(
+      `[InviteUser] Redis invitation token stored | invitedEmail=${invited} | ttl=${ttl} | tokenLength=${token.length}`,
+    );
     return token;
   }
 }

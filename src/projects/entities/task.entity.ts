@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import {
   IsString,
@@ -15,14 +17,23 @@ import {
   IsEnum,
   IsDate,
 } from 'class-validator';
-import { Project } from '../../projects/entities/project.entity';
+import { Project } from 'src/projects/entities/project.entity';
+import { Team } from 'src/teams/entities/team.entity';
+import { Milestone } from 'src/milestone/entities/milestone.entity';
 
 export enum TaskStatus {
   TODO = 'todo',
   IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
   REVIEW = 'review',
+  COMPLETED = 'completed',
+  ON_HOLD = 'on_hold',
   BLOCKED = 'blocked',
+}
+
+export enum TaskPriority {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
 }
 
 @Entity({ name: 'tasks' })
@@ -46,14 +57,14 @@ export class Task {
   @IsEnum(TaskStatus, { message: 'Invalid task status' })
   status: TaskStatus;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'text', nullable: true })
   @IsOptional()
-  @IsDate({ message: 'Due date must be a valid date' })
-  due_date?: Date;
+  @IsString({ message: 'Due date must be a valid date' })
+  due_date?: string;
 
-  @Column({ type: 'int', nullable: true })
-  @IsOptional()
-  priority?: number;
+  @Column({ type: 'enum', enum: TaskPriority, default: TaskPriority.LOW })
+  @IsEnum(TaskPriority, { message: 'Invalid task priority' })
+  priority?: TaskPriority;
 
   @CreateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
@@ -67,4 +78,19 @@ export class Task {
   })
   @JoinColumn({ name: 'project_id' })
   project: Project;
+
+  @ManyToOne(() => Milestone, (milestone) => milestone.tasks, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'milestone_id' })
+  milestone?: Milestone;
+
+  @ManyToMany(() => Team, (team) => team.tasks)
+  @JoinTable({
+    name: 'task_teams',
+    joinColumn: { name: 'task_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'team_id', referencedColumnName: 'id' },
+  })
+  teams: Team[];
 }

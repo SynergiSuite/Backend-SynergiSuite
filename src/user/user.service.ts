@@ -19,7 +19,6 @@ import { RolesService } from '../roles/roles.service';
 import { Business } from '../business/entities/business.entity';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Role } from '../roles/entities/role.entity';
 
 @Injectable()
 export class UserService {
@@ -276,10 +275,20 @@ export class UserService {
 
   // Helper Function (Guard)
   async userHasBusinessCheck(email: string){
+    this.logger.log(`[InviteUser] Checking user business relation | email=${email}`);
     const user = await this.userRepository.findOne({where: {email: email}, relations: ['business', 'role']})
+    if (!user) {
+      this.logger.warn(`[InviteUser] User not found while checking business relation | email=${email}`);
+      return false;
+    }
+
     if (user.business) {
+      this.logger.log(
+        `[InviteUser] User has business relation | email=${email} | businessId=${user.business.business_id}`,
+      );
       return true && {business_id: user.business.business_id}
     }
+    this.logger.log(`[InviteUser] User has no business relation | email=${email}`);
     return false;
   };
 
@@ -339,15 +348,46 @@ export class UserService {
   }
 
   async setInvitedUser(invited: string, invitedBy: string, roleId: number){
+    this.logger.log(
+      `[InviteUser] Setting invited user business | invitedEmail=${invited} | invitedBy=${invitedBy} | roleId=${roleId}`,
+    );
     try {
+      this.logger.log(`[InviteUser] Loading invited user with business | invitedEmail=${invited}`);
       const invitedUser = await this.findUserAndBusinessByEmail(invited);
+      this.logger.log(
+        `[InviteUser] Loaded invited user | invitedEmail=${invited} | found=${Boolean(invitedUser)} | currentBusinessId=${invitedUser?.business?.business_id ?? 'none'} | currentRoleId=${invitedUser?.role?.id ?? 'none'}`,
+      );
+      this.logger.log(`[InviteUser] Loading inviting user with business | invitedBy=${invitedBy}`);
       const invitingUser = await this.findUserAndBusinessByEmail(invitedBy);
+      this.logger.log(
+        `[InviteUser] Loaded inviting user | invitedBy=${invitedBy} | found=${Boolean(invitingUser)} | businessId=${invitingUser?.business?.business_id ?? 'none'} | roleId=${invitingUser?.role?.id ?? 'none'}`,
+      );
+      this.logger.log(`[InviteUser] Loading assigned role | roleId=${roleId}`);
       const role = await this.roleService.findOne(roleId);
+      this.logger.log(
+        `[InviteUser] Loaded assigned role | roleId=${roleId} | found=${Boolean(role)} | roleName=${role?.name ?? 'none'}`,
+      );
+
+      if (!invitedUser || !invitingUser || !invitingUser.business || !role) {
+        this.logger.error(
+          `[InviteUser] Cannot set invited user business | invitedFound=${Boolean(invitedUser)} | invitingFound=${Boolean(invitingUser)} | invitingHasBusiness=${Boolean(invitingUser?.business)} | roleFound=${Boolean(role)}`,
+        );
+        throw new BadRequestException('Invalid invitation data.');
+      }
+
       invitedUser.business = invitingUser.business;
       invitedUser.role =  role;
-      return await this.userRepository.save(invitedUser);
+      const savedUser = await this.userRepository.save(invitedUser);
+      this.logger.log(
+        `[InviteUser] Invited user business saved | invitedEmail=${invited} | businessId=${savedUser.business?.business_id ?? 'none'} | roleId=${savedUser.role?.id ?? 'none'}`,
+      );
+      return savedUser;
 
     } catch (error) {
+      this.logger.error(
+        `[InviteUser] Failed setting invited user business | invitedEmail=${invited} | invitedBy=${invitedBy} | roleId=${roleId} | error=${error.message}`,
+        error.stack,
+      );
       throw new HttpException("Something went wrong: " + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   };

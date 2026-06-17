@@ -55,6 +55,7 @@ export class AuthService {
       return {
         access_token: token,
         email: user.email,
+        user_id: user.user_id,
         name: user.name,
         isVerified: user.is_Verified,
       };
@@ -103,6 +104,7 @@ export class AuthService {
           return {
             message: 'Logged in successfully',
             access_token: token,
+            user_id: user.user_id,
             email: user.email,
             name: user.name,
             verified: user.is_Verified,
@@ -115,6 +117,7 @@ export class AuthService {
           return {
             message: 'Logged in successfully',
             access_token: token,
+            user_id: user.user_id,
             email: user.email,
             name: user.name,
             verified: user.is_Verified,

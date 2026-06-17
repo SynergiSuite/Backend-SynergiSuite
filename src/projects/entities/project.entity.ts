@@ -14,7 +14,8 @@ import {
 import { Business } from '../../business/entities/business.entity';
 import { Team } from '../../teams/entities/team.entity';
 import { Task } from './task.entity';
-import { Client } from '../../clients/entities/client.entity';
+import { Client } from 'src/clients/entities/client.entity';
+import { Milestone } from 'src/milestone/entities/milestone.entity';
 
 @Entity({ name: 'projects' })
 export class Project {
@@ -35,6 +36,10 @@ export class Project {
   @Column({ type: 'int', nullable: false, default: 0 })
   @IsInt()
   status: number
+
+  @Column({ type: 'text', nullable: false, default: 'N/A' })
+  @IsString()
+  duration: string
   
   // Timestamps (matching your general style)
   @CreateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
@@ -50,6 +55,9 @@ export class Project {
 
   @OneToMany(() => Task, (task) => task.project, { cascade: true })
   tasks: Task[];
+
+  @OneToMany(() => Milestone, (milestone) => milestone.project, { cascade: true })
+  milestones: Milestone[];
 
 
   @ManyToMany(() => Team, (team) => team.projects)

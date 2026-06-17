@@ -119,6 +119,53 @@ export class validAuthorizationGuard implements CanActivate {
     }
 }
 
+@Injectable()
+export class teamProgressGuard implements CanActivate {
+    private readonly logger = new Logger(teamProgressGuard.name);
+
+    constructor(
+        private readonly userService: UserService,
+        private readonly teamService: TeamsService
+    ){}
+
+    async canActivate(context: ExecutionContext): Promise<boolean> {
+        const request = context.switchToHttp().getRequest();
+        const user = request.user;
+        const teamId = request.params.teamId;
+
+        if(!user){
+            this.logger.error(`No user found in the request`);
+            throw new UnauthorizedException('User not found');
+        }
+
+        if(!teamId){
+            this.logger.error(`No team id provided in request`);
+            throw new BadRequestException('Team id is required');
+        }
+
+        this.logger.log(`Looking for user: ${user.email}`);
+        const userDetails = await this.userService.getUserWithBusiness(user.email);
+        this.logger.log(`User details found: ${user.email}`);
+
+        this.logger.log(`Looking for team: ${teamId}`);
+        const teamDetails = await this.teamService.findOne(teamId);
+
+        if(!teamDetails){
+            this.logger.error(`Team not found: ${teamId}`);
+            throw new BadRequestException('Invalid team ID');
+        }
+
+        this.logger.log(`Checking if team belongs to user's business: ${teamId}`);
+        if(teamDetails.business.business_id !== userDetails.business.business_id){
+            this.logger.error(`User and team are not in the same business: ${user.email} and ${teamId}`);
+            throw new UnauthorizedException('User is not authorized to access this team');
+        }
+
+        this.logger.log(`User is authorized to access team progress: ${user.email}`);
+        return true;
+    }
+}
+
 // This guard checks if user has right role
 @Injectable()
 export class roleGuard implements CanActivate {
@@ -316,7 +363,6 @@ export class RemoveTeamMembersGuard implements CanActivate {
     return true;
   }
 }
-
 
 
 

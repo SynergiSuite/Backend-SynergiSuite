@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Req,
+  Logger,
 } from '@nestjs/common';
 import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
@@ -20,6 +21,8 @@ import { IsVerifiedGuard } from '../shared/isVerified.guard';
 
 @Controller('business')
 export class BusinessController {
+  private readonly logger = new Logger(BusinessController.name);
+
   constructor(private readonly businessService: BusinessService) {}
 
   @Post("/register")
@@ -30,8 +33,26 @@ export class BusinessController {
 
   @Post("/invite")
   @UseGuards(JwtGuard, IsVerifiedGuard, businessInvitationGuard)
-  sendInvitation(@Req() reqObj: Request, @Body() inviteDto: InviteDto) {
-    return this.businessService.sendInvitation(reqObj.user, inviteDto);
+  async sendInvitation(@Req() reqObj: Request, @Body() inviteDto: InviteDto) {
+    const requestUser = reqObj.user as any;
+
+    this.logger.log(
+      `[InviteUser] Controller received invite request | invitingUser=${requestUser?.email ?? 'unknown'} | invitedEmail=${inviteDto.email} | roleId=${inviteDto.role_id}`,
+    );
+
+    try {
+      const response = await this.businessService.sendInvitation(requestUser, inviteDto);
+      this.logger.log(
+        `[InviteUser] Controller completed invite request | invitedEmail=${inviteDto.email}`,
+      );
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `[InviteUser] Controller failed invite request | invitingUser=${requestUser?.email ?? 'unknown'} | invitedEmail=${inviteDto.email} | error=${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
   @Post("/join-business")

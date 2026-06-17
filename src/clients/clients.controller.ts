@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, ParseUUIDPipe } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { roleGuard, createClientGuard, checkClientBusiness } from './client.guard';
+import { roleGuard, createClientGuard, checkClientBusiness, editClientGuard } from './client.guard';
 import { Request } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtGuard } from '../shared/auth.guard';
@@ -26,17 +26,19 @@ export class ClientsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.clientsService.findOne(+id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.clientsService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
-    return this.clientsService.update(+id, updateClientDto);
+  @Post('edit-client/:id')
+  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard, editClientGuard)
+  update(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string, @Body() updateClientDto: UpdateClientDto) {
+    return this.clientsService.update(id, updateClientDto, req.user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.clientsService.remove(+id);
+  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard, editClientGuard)
+  remove(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string) {
+    return this.clientsService.remove(id, req.user);
   }
 }
