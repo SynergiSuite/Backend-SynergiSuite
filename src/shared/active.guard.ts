@@ -4,11 +4,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { UserService } from '../user/user.service';
+import { UserHelper } from 'src/user/user.helper';
 
 @Injectable()
 export class JWTwithVerficationAndActiveGuard extends AuthGuard('jwt') {
-  constructor(private readonly userService: UserService) {
+  constructor(private readonly userHelper: UserHelper) {
     super();
   }
 
@@ -26,7 +26,7 @@ export class JWTwithVerficationAndActiveGuard extends AuthGuard('jwt') {
       throw new UnauthorizedException('User not found.');
     }
 
-    const validate = await this.userService.isUserActive(user.email);
+    const validate = await this.userHelper.isUserActive(user.email);
 
     if (!validate) {
       throw new UnauthorizedException(

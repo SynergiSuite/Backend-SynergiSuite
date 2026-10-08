@@ -1,132 +1,57 @@
 import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
   Injectable,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Between, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { EmailDto } from '../mailer/dto/email.dto';
 import { VerificationResponseDto } from './dto/response.dto';
 import { User } from './entities/user.entity';
 import { EmailService } from '../mailer/email.service';
 import { RedisService } from '../redis/redis.service';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { RolesService } from '../roles/roles.service';
-import { Business } from '../business/entities/business.entity';
 import { Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { UserHelper } from './user.helper';
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly userHelper: UserHelper,
     private readonly mailerService: EmailService,
     private readonly redisService: RedisService,
-    private roleService: RolesService,
-    private readonly jwtService: JwtService,
   ) {}
 
   // Find all users
   async findAll(): Promise<User[]> | undefined {
-    return await this.userRepository.find();
+    return this.userHelper.findAll();
   }
 
-  async findOne(id: number): Promise<User> {
-    return await this.userRepository.findOne({ where: { user_id: id }, relations: ['business', 'role'] });
-  }
-
-  async findByEmail(email: string): Promise<User> | undefined {
-    return await this.userRepository.findOne({ where: { email } });
-  }
-
-  async findUserAndBusinessByEmail(email: string): Promise<User> | undefined {
-    return await this.userRepository.findOne({where: {email}, relations: ['business', 'role']})
-  }
-
+  // This function change the name of the user
   async updateName(
     data: any,
     updateUserDto: UpdateUserDto,
   ): Promise<VerificationResponseDto> {
     try {
-      await this.userRepository.update(
-        { email: data.email },
-        { name: updateUserDto.updatedName },
-      );
-      return {
-        message: 'Name updated successfully!',
-        name: updateUserDto.name,
-        email: updateUserDto.email,
-      };
-    } catch (error) {
-      return {
-        message: error.message,
-        status: HttpStatus.BAD_REQUEST,
-      };
-    }
-  }
-
-  async requestEmailChangeCode(
-    data: UpdateUserDto,
-    reqObject: any,
-  ): Promise<VerificationResponseDto> {
-    try {
-      const resp = await this.requestVerfication(reqObject.email, {
-        to: data.updatedEmail,
-        subject: 'Change Email Request',
-        text: '',
-        name: '',
-        heading: '',
+      await this.userHelper.updateUserOnDemand(data.email, {
+        name: updateUserDto.updatedName,
       });
-      if (resp.status == 200) {
-        return {
-          message: 'Please verify your new email',
-        };
-      } else {
-        return { error: 'Update Email Failed' };
-      }
-    } catch (error) {
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  async requestVerfication(
-    oldEmail: string,
-    obj: EmailDto,
-  ): Promise<VerificationResponseDto> {
-    const user = await this.findByEmail(oldEmail);
-    try {
-      const otp = await this.redisService.generateUpdateEmailCode(
-        obj.to,
-        oldEmail,
-      );
-      obj.text = 'Your verification code is ' + otp;
-      obj.name = user.name;
-      obj.heading = 'Lets change your email';
-      await this.mailerService.sendVerificationEmail(obj);
       return {
-        message: 'email sent for verfication',
-        status: HttpStatus.OK,
+        name: updateUserDto.name,
       };
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new InternalServerErrorException(error.message);
     }
   }
 
   // Email verification
   async requestEmailVerification(data: any) {
-    this.logger.log(`Requesting email verification for user: ${data.email}`);
-    const user = await this.findByEmail(data.email);
-    this.logger.log(`User found: ${user.email}`);
+    this.logger.log(
+      `Initializing email verification request for user: ${data.email}`,
+    );
+    const user = await this.userHelper.findByEmail(data.email);
     try {
-      this.logger.log(`Generating verification code for user: ${data.email}`);
       const otp = await this.redisService.generateVerificationCode(data.email);
-      this.logger.log(`Verification code generated for user: ${data.email}`);
       const obj = {
         to: data.email,
         subject: 'Please verify Your Email!',
@@ -135,21 +60,21 @@ export class UserService {
         heading: 'Lets verify your email',
       };
 
-      this.logger.log(`Sending verification email to user: ${data.email}`);
       await this.mailerService.sendVerificationEmail(obj);
-      this.logger.log(`Verification email sent to user: ${data.email}`);
       return {
-        message: 'Email sent for verification.'
+        message: 'Email sent for verification.',
       };
     } catch (error) {
-      this.logger.error(`Failed to send verification email to user: ${data.email}`);
-      this.logger.error(error.message);
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      this.logger.error(
+        `Failed to send verification email to user: ${data.email} ${error.message}`,
+      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
+  // Change Password
   async updatePassword(data: any, dataObj: UpdatePasswordDto) {
-    const user = await this.findByEmail(data.email);
+    const user = await this.userHelper.findByEmail(data.email);
     const validate = await bcrypt.compare(
       dataObj.oldPassword,
       user.password_hash,
@@ -160,22 +85,21 @@ export class UserService {
 
     try {
       const hashedPassword = await bcrypt.hash(dataObj.updatedPassword, 10);
-      await this.userRepository.update(
-        { email: data.email },
-        { password_hash: hashedPassword },
-      );
+      await this.userHelper.updateUserOnDemand(data.email, {
+        password_hash: hashedPassword,
+      });
 
       return {
         message: 'Password has been updated successfully!',
-        status: HttpStatus.OK,
       };
     } catch (error) {
-      throw new HttpException({ message: error.message }, 400);
+      throw new InternalServerErrorException(error.message);
     }
   }
 
+  // Request to change password(Forgot Password)
   async requestForgotPasswordCode(email: string) {
-    const user = await this.findByEmail(email);
+    const user = await this.userHelper.findByEmail(email);
     const otp = await this.redisService.generateVerificationCode(email);
     const obj = {
       to: email,
@@ -190,205 +114,12 @@ export class UserService {
       await this.mailerService.sendVerificationEmail(obj);
       return {
         message: 'Email has been sent. Check your inbox!',
-        status: HttpStatus.CONTINUE,
       };
-    } catch (error) {
-      return {
-        message: error.message,
-        status: HttpStatus.BAD_REQUEST,
-      };
-    }
-  }
-
-  async remove(id: number) {
-    try {
-      await this.userRepository.delete(id);
-      return {
-        message: 'Account removed successfully!',
-        status: HttpStatus.OK,
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Unable to perofrm this action!',
-        HttpStatus.NOT_ACCEPTABLE,
-      );
-    }
-  }
-
-  // Helper Function
-  async isUserverified(email: string) {
-    const user = await this.findByEmail(email);
-    if (!user.is_Verified) {
-      return false;
-    }
-    return true;
-  }
-
-  // Helper Function
-  async isUserBusinessRegistered(email: string){
-    const user = await this.userRepository.findOne({where: {email: email}, relations: ['business']})
-    if (user.business) {
-      return false;
-    }
-    return true;
-  }
-
-  // Helper Function
-  async findUserWithBusiness(obj: any){
-    const user = await this.userRepository.findOne(
-      {where: {email: obj.email},
-      relations: ['business'],
-    })
-    return user;
-  }
-
-  // Helper Function
-  async getUserWithBusiness(email: string){
-    const user = await this.userRepository.findOne(
-      {where: {email: email},
-      relations: ['business', 'role'],
-    })
-    return user;
-  }
-
-  // Helper Function
-  async updateRole(role_id: number, user: User, business: Business) {
-    const role = await this.roleService.findOne(role_id) 
-    user.role = role
-    user.business = business
-    return await this.userRepository.save(user)
-  }
-
-  async isUserActive(email: string) {
-    const user = await this.findByEmail(email);
-    if (!user.business) {
-      return false;
-    }
-    if (!user.role) {
-      return false;
-    }
-    if (!user.is_Verified) {
-      return false;
-    }
-    return true;
-  }
-
-  // Helper Function (Guard)
-  async userHasBusinessCheck(email: string){
-    this.logger.log(`[InviteUser] Checking user business relation | email=${email}`);
-    const user = await this.userRepository.findOne({where: {email: email}, relations: ['business', 'role']})
-    if (!user) {
-      this.logger.warn(`[InviteUser] User not found while checking business relation | email=${email}`);
-      return false;
-    }
-
-    if (user.business) {
-      this.logger.log(
-        `[InviteUser] User has business relation | email=${email} | businessId=${user.business.business_id}`,
-      );
-      return true && {business_id: user.business.business_id}
-    }
-    this.logger.log(`[InviteUser] User has no business relation | email=${email}`);
-    return false;
-  };
-
-  // Helper Function
-  async getEmployeesByBusinessId(businessId: number) {
-    const employees = await this.userRepository.find({
-      where: { business: { business_id: businessId } },
-      select: ['user_id', 'name', 'email', 'token_digest' ],  
-      relations: ['role', 'business'],          
-    });
-
-    return employees.map(user => {
-      let tokenExpiry: Date | null = null;
-      let isExpired = null;
-
-      if (user.token_digest) {
-        try {
-          // Decode without verifying (just extract payload)
-          const decoded = this.jwtService.decode(user.token_digest) as { exp?: number };
-
-          if (decoded?.exp) {
-            tokenExpiry = new Date(decoded.exp * 1000); // exp is in seconds
-            isExpired = Date.now() >= decoded.exp * 1000;
-          }
-        } catch (e) {
-          tokenExpiry = null;
-          isExpired = true;
-        }
-      }
-
-      return {
-        user_id: user.user_id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        business: user.business,
-        tokenExpiry,
-        isExpired,
-      };
-    });
-  }
-
-  async registrationCounts(businessID: number){
-    const today = new Date();
-    const firstDayOfWeek = new Date(today);
-    firstDayOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
-    firstDayOfWeek.setHours(0, 0, 0, 0);
-
-    const newRegistrationsThisWeek = await this.userRepository.count({
-      where: {
-        business: { business_id: businessID },
-        registration_date: Between(firstDayOfWeek, today),
-      },
-    });
-  
-    return newRegistrationsThisWeek;
-  }
-
-  async setInvitedUser(invited: string, invitedBy: string, roleId: number){
-    this.logger.log(
-      `[InviteUser] Setting invited user business | invitedEmail=${invited} | invitedBy=${invitedBy} | roleId=${roleId}`,
-    );
-    try {
-      this.logger.log(`[InviteUser] Loading invited user with business | invitedEmail=${invited}`);
-      const invitedUser = await this.findUserAndBusinessByEmail(invited);
-      this.logger.log(
-        `[InviteUser] Loaded invited user | invitedEmail=${invited} | found=${Boolean(invitedUser)} | currentBusinessId=${invitedUser?.business?.business_id ?? 'none'} | currentRoleId=${invitedUser?.role?.id ?? 'none'}`,
-      );
-      this.logger.log(`[InviteUser] Loading inviting user with business | invitedBy=${invitedBy}`);
-      const invitingUser = await this.findUserAndBusinessByEmail(invitedBy);
-      this.logger.log(
-        `[InviteUser] Loaded inviting user | invitedBy=${invitedBy} | found=${Boolean(invitingUser)} | businessId=${invitingUser?.business?.business_id ?? 'none'} | roleId=${invitingUser?.role?.id ?? 'none'}`,
-      );
-      this.logger.log(`[InviteUser] Loading assigned role | roleId=${roleId}`);
-      const role = await this.roleService.findOne(roleId);
-      this.logger.log(
-        `[InviteUser] Loaded assigned role | roleId=${roleId} | found=${Boolean(role)} | roleName=${role?.name ?? 'none'}`,
-      );
-
-      if (!invitedUser || !invitingUser || !invitingUser.business || !role) {
-        this.logger.error(
-          `[InviteUser] Cannot set invited user business | invitedFound=${Boolean(invitedUser)} | invitingFound=${Boolean(invitingUser)} | invitingHasBusiness=${Boolean(invitingUser?.business)} | roleFound=${Boolean(role)}`,
-        );
-        throw new BadRequestException('Invalid invitation data.');
-      }
-
-      invitedUser.business = invitingUser.business;
-      invitedUser.role =  role;
-      const savedUser = await this.userRepository.save(invitedUser);
-      this.logger.log(
-        `[InviteUser] Invited user business saved | invitedEmail=${invited} | businessId=${savedUser.business?.business_id ?? 'none'} | roleId=${savedUser.role?.id ?? 'none'}`,
-      );
-      return savedUser;
-
     } catch (error) {
       this.logger.error(
-        `[InviteUser] Failed setting invited user business | invitedEmail=${invited} | invitedBy=${invitedBy} | roleId=${roleId} | error=${error.message}`,
-        error.stack,
+        `Failed to send verification email to user: ${email} ${error.message}`,
       );
-      throw new HttpException("Something went wrong: " + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new InternalServerErrorException(error.message);
     }
-  };
+  }
 }

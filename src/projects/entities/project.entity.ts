@@ -1,4 +1,10 @@
-import { IsInt, IsString, MaxLength, MinLength, IsOptional } from 'class-validator';
+import {
+  IsInt,
+  IsString,
+  MaxLength,
+  MinLength,
+  IsOptional,
+} from 'class-validator';
 import {
   Column,
   CreateDateColumn,
@@ -35,19 +41,18 @@ export class Project {
 
   @Column({ type: 'int', nullable: false, default: 0 })
   @IsInt()
-  status: number
+  status: number;
 
   @Column({ type: 'text', nullable: false, default: 'N/A' })
   @IsString()
-  duration: string
-  
+  duration: string;
+
   // Timestamps (matching your general style)
   @CreateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 
   @UpdateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   updated_at: Date;
-
 
   @ManyToOne(() => Business, (business) => business.projects)
   @JoinColumn({ name: 'business_id' })
@@ -56,9 +61,10 @@ export class Project {
   @OneToMany(() => Task, (task) => task.project, { cascade: true })
   tasks: Task[];
 
-  @OneToMany(() => Milestone, (milestone) => milestone.project, { cascade: true })
+  @OneToMany(() => Milestone, (milestone) => milestone.project, {
+    cascade: true,
+  })
   milestones: Milestone[];
-
 
   @ManyToMany(() => Team, (team) => team.projects)
   @JoinTable({
@@ -68,7 +74,9 @@ export class Project {
   })
   teams: Team[];
 
-  @ManyToOne(() => Client, (client) => client.projects, { onDelete: 'SET NULL' })
+  @ManyToOne(() => Client, (client) => client.projects, {
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'client_id' })
   client: Client;
 }

@@ -3,21 +3,29 @@ import {
   Get,
   Post,
   Body,
-  Patch,
-  Param,
   Delete,
   UseGuards,
   Req,
   Logger,
+  Query,
 } from '@nestjs/common';
 import { BusinessService } from './business.service';
 import { CreateBusinessDto } from './dto/create-business.dto';
-import { UpdateBusinessDto } from './dto/update-business.dto';
 import { Request } from 'express';
 import { InviteDto } from './dto/send-invitation.dto';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { JwtGuard } from '../shared/auth.guard';
-import { businessAcceptInvitationGuard, businessAlreadyExistsGuard, checkHasBusiness, businessInvitationGuard } from './business.guard';
+import {
+  BusinessAcceptInvitationGuard,
+  BusinessAlreadyExistsGuard,
+  CheckHasBusiness,
+  EmployeeBelongsToBusinessGuard,
+  roleGuard,
+  BusinessInvitationGuard,
+  RequestedEmployeeBelongsToBusinessGuard,
+} from './business.guard';
 import { IsVerifiedGuard } from '../shared/isVerified.guard';
+import { FrontendSecretGuard } from 'src/shared/frontend-secret.guard';
 
 @Controller('business')
 export class BusinessController {
@@ -25,14 +33,25 @@ export class BusinessController {
 
   constructor(private readonly businessService: BusinessService) {}
 
-  @Post("/register")
-  @UseGuards(JwtGuard, IsVerifiedGuard, businessAlreadyExistsGuard) 
+  @Post('/register')
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    BusinessAlreadyExistsGuard, 
+  )
   create(@Req() reqObj: Request, @Body() createBusinessDto: CreateBusinessDto) {
-    return this.businessService.create(reqObj.user, createBusinessDto);
+    const user = reqObj.user as any;
+    return this.businessService.create(user.email, createBusinessDto);
   }
 
-  @Post("/invite")
-  @UseGuards(JwtGuard, IsVerifiedGuard, businessInvitationGuard)
+  @Post('/invite')
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    BusinessInvitationGuard,
+  )
   async sendInvitation(@Req() reqObj: Request, @Body() inviteDto: InviteDto) {
     const requestUser = reqObj.user as any;
 
@@ -41,7 +60,10 @@ export class BusinessController {
     );
 
     try {
-      const response = await this.businessService.sendInvitation(requestUser, inviteDto);
+      const response = await this.businessService.sendInvitation(
+        requestUser,
+        inviteDto,
+      );
       this.logger.log(
         `[InviteUser] Controller completed invite request | invitedEmail=${inviteDto.email}`,
       );
@@ -55,38 +77,82 @@ export class BusinessController {
     }
   }
 
-  @Post("/join-business")
-  @UseGuards(JwtGuard, IsVerifiedGuard, businessAcceptInvitationGuard)
-  acceptInvitation(@Req() reqObj: Request, @Body('token') token: string){
-    return this.businessService.acceptInvitation(reqObj.user, token)
+  @Post('/join-business')
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    BusinessAcceptInvitationGuard,
+  )
+  acceptInvitation(@Req() reqObj: Request, @Body('token') token: string) {
+    return this.businessService.acceptInvitation(reqObj.user, token);
   }
 
-  @Post("get-employees")
-  @UseGuards(JwtGuard, IsVerifiedGuard, checkHasBusiness)
-  getEmployees(@Req() reqObj: Request){
-    return this.businessService.getEmployees(reqObj.user)
-  }
-
-  @Get()
-  findAll() {
-    return this.businessService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.businessService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateBusinessDto: UpdateBusinessDto,
+  @Get('get-employees')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CheckHasBusiness)
+  getEmployees(
+    @Req() reqObj: Request & { user: any; business: number },
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.businessService.update(+id, updateBusinessDto);
+    return this.businessService.getEmployees({
+      ...(reqObj.user as any),
+      search,
+      business_id: reqObj.business,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.businessService.remove(+id);
+  @Get('get-employees-all')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CheckHasBusiness)
+  getEmployeesAll(@Req() reqObj: Request & { business: number }) {
+    return this.businessService.getEmployeesAll(reqObj.business);
+  }
+
+  @Get('employees/:id')
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    RequestedEmployeeBelongsToBusinessGuard,
+  )
+  getEmployeeDetail(@Req() reqObj: Request & { employee: any }) {
+    return this.businessService.getEmployeeDetail(reqObj.employee);
+  }
+
+  @Post('employees/:id')
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    roleGuard,
+    EmployeeBelongsToBusinessGuard,
+  )
+  updateEmployee(
+    @Req() reqObj: Request & { requester: any; employee: any },
+    @Body() updateEmployeeDto: UpdateEmployeeDto,
+  ) {
+    return this.businessService.updateEmployee(
+      reqObj.employee,
+      updateEmployeeDto,
+      reqObj.requester,
+    );
+  }
+
+  @Delete('employees/:id')
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    roleGuard,
+    EmployeeBelongsToBusinessGuard,
+  )
+  removeEmployee(@Req() reqObj: Request & { requester: any; employee: any }) {
+    return this.businessService.removeEmployeeFromBusiness(
+      reqObj.employee,
+      reqObj.requester,
+    );
   }
 }

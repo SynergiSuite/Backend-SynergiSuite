@@ -5,50 +5,51 @@ import {
   ConflictException,
   NotFoundException,
   Logger,
-  UnauthorizedException
-} from '@nestjs/common'
-import { UserService } from './user.service';
-
+  BadRequestException,
+} from '@nestjs/common';
+import { UserHelper } from './user.helper';
 
 // This Guard only checks if the user already exists or not.
 @Injectable()
-export class userAlreadyExistGuard implements CanActivate {
-  private readonly logger = new Logger(userAlreadyExistGuard.name);
-  constructor(private readonly userService: UserService) {}
+export class UserAlreadyExistGuard implements CanActivate {
+  private readonly logger = new Logger(UserAlreadyExistGuard.name);
+  constructor(private readonly userHelper: UserHelper) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const createUserDto = request.body;
 
     this.logger.log(`Checking if user already exists: ${createUserDto.email}`);
-    const existingUser = await this.userService.findByEmail(
-      createUserDto.email,
-    );
+    const existingUser = await this.userHelper.getUserWithBusinessDetailWithoutException(createUserDto.email);
 
     if (existingUser) {
-      this.logger.error(`User already exists: ${createUserDto.email}`)
-      throw new ConflictException('User Already Exist');
+      this.logger.error(
+        `Cannot sign this user up. User already exists. Email: ${existingUser.email}`,
+      );
+      throw new ConflictException(
+        'Cannot sign this user up. User already exists.',
+      );
     } else {
-      this.logger.log(`User does not exist: ${createUserDto.email}`)
+      this.logger.log(
+        `Allowing user to sign up. Email: ${createUserDto.email}`,
+      );
       return true;
     }
   }
 }
 
 @Injectable()
-export class userExistGuard implements CanActivate {
-  constructor(private readonly userService: UserService) {}
+export class UserExistGuard implements CanActivate {
+  constructor(private readonly userHelper: UserHelper) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const createUserDto = request.body;
 
-    const existingUser = await this.userService.findByEmail(
-      createUserDto.email,
-    );
+    const existingUser = await this.userHelper.findByEmail(createUserDto.email);
 
     if (!existingUser) {
-      throw new NotFoundException('Could not find email!');
+      throw new NotFoundException('Could not find user linked with this email');
     } else {
       return true;
     }
@@ -57,24 +58,22 @@ export class userExistGuard implements CanActivate {
 
 // This Guard only checks if the user is already verified or not.
 @Injectable()
-export class userNotVerified implements CanActivate {
-  private readonly logger = new Logger(userNotVerified.name);
-  constructor(private readonly userService: UserService) {}
+export class UserNotVerified implements CanActivate {
+  private readonly logger = new Logger(UserNotVerified.name);
+  constructor(private readonly userHelper: UserHelper) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const createUserDto = request.user;
 
-    const existingUser = await this.userService.findByEmail(
-      createUserDto.email,
-    );
+    const existingUser = await this.userHelper.findByEmail(createUserDto.email);
     this.logger.log(`Checking if user is verified: ${existingUser.email}`);
 
     if (existingUser.is_Verified) {
-      this.logger.error(`User is already verified: ${existingUser.email}`)
-      throw new UnauthorizedException('User is already verified!');
+      this.logger.error(`User is already verified: ${existingUser.email}`);
+      throw new BadRequestException('User is already verified!');
     } else {
-      this.logger.log(`User is not verified: ${existingUser.email}`)
+      this.logger.log(`User is not verified: ${existingUser.email}`);
       return true;
     }
   }

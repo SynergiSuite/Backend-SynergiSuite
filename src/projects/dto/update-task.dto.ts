@@ -9,7 +9,6 @@ import {
 import { TaskPriority, TaskStatus } from '../entities/task.entity';
 
 export class UpdateTaskDto {
-
   @IsString({ message: 'Title must be a string' })
   id: string;
 
@@ -32,6 +31,9 @@ export class UpdateTaskDto {
   priority?: TaskPriority;
 
   @IsOptional()
-  @IsDateString({}, { message: 'Due date must be a valid ISO 8601 date string' })
+  @IsDateString(
+    {},
+    { message: 'Due date must be a valid ISO 8601 date string' },
+  )
   due_date?: string;
 }

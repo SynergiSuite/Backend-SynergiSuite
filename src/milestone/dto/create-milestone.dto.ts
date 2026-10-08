@@ -3,6 +3,7 @@ import {
   MinLength,
   MaxLength,
   IsDateString,
+  IsNotEmpty,
   IsOptional,
   IsArray,
   ArrayUnique,
@@ -14,12 +15,15 @@ export class CreateMilestoneDto {
   @MaxLength(100, { message: 'Name can not exceed 100 characters' })
   name: string;
 
-  @IsDateString({}, { message: 'End date must be a valid ISO 8601 date string' })
+  @IsDateString(
+    {},
+    { message: 'End date must be a valid ISO 8601 date string' },
+  )
   endDate: string;
 
-  @IsOptional()
+  @IsNotEmpty({ message: 'Project ID is required' })
   @IsString({ message: 'Project ID must be a string' })
-  projectId?: string;
+  projectId: string;
 
   @IsOptional()
   @IsString({ message: 'Project name must be a string' })

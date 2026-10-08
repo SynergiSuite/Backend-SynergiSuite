@@ -8,9 +8,22 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { IsString, IsEmail, MaxLength, MinLength, IsOptional, IsInt } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  MaxLength,
+  MinLength,
+  IsInt,
+  IsEnum,
+  IsNumber,
+} from 'class-validator';
 import { Business } from '../../business/entities/business.entity';
 import { Project } from '../../projects/entities/project.entity';
+
+export enum ClientPaymentType {
+  PER_HOUR = 'per_hour',
+  EACH_MILESTONE = 'each_milestone',
+}
 
 @Entity({ name: 'clients' })
 export class Client {
@@ -44,6 +57,19 @@ export class Client {
   @IsInt()
   priority: number;
 
+  @Column({
+    name: 'payment_type',
+    type: 'enum',
+    enum: ClientPaymentType,
+    default: ClientPaymentType.PER_HOUR,
+  })
+  @IsEnum(ClientPaymentType)
+  paymentType: ClientPaymentType;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  @IsNumber()
+  amount: number;
+
   @CreateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 
@@ -51,7 +77,9 @@ export class Client {
   updated_at: Date;
 
   // One business can have many clients
-  @ManyToOne(() => Business, (business) => business.clients, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Business, (business) => business.clients, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'business_id' })
   business: Business;
 

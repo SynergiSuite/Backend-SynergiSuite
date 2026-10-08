@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Req,
+  Logger,
+} from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
@@ -16,7 +27,9 @@ export class DocumentsController {
 
   @Post()
   create(@Req() req: Request, @Body() createDocumentDto: CreateDocumentDto) {
-    this.logger.log(`Received request to create document: ${createDocumentDto.name}`);
+    this.logger.log(
+      `Received request to create document: ${createDocumentDto.name}`,
+    );
     return this.documentsService.create(req.user, createDocumentDto);
   }
 
@@ -27,15 +40,19 @@ export class DocumentsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDocumentDto: UpdateDocumentDto) {
+  update(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() updateDocumentDto: UpdateDocumentDto,
+  ) {
     this.logger.log(`Received request to update document ID: ${id}`);
-    return this.documentsService.update(+id, updateDocumentDto);
+    return this.documentsService.update(req.user, +id, updateDocumentDto);
   }
 
   @Delete(':id')
   @UseGuards(DocumentDeleteGuard)
-  remove(@Param('id') id: string) {
+  remove(@Req() req: Request, @Param('id') id: string) {
     this.logger.log(`Received request to delete document ID: ${id}`);
-    return this.documentsService.remove(+id);
+    return this.documentsService.remove(req.user, +id);
   }
 }

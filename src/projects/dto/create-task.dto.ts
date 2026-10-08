@@ -5,7 +5,6 @@ import {
   IsOptional,
   IsEnum,
   IsDateString,
-  ArrayMinSize,
 } from 'class-validator';
 import { TaskPriority, TaskStatus } from '../entities/task.entity';
 
@@ -29,7 +28,10 @@ export class CreateTaskDto {
   priority?: TaskPriority;
 
   @IsOptional()
-  @IsDateString({}, { message: 'Due date must be a valid ISO 8601 date string' })
+  @IsDateString(
+    {},
+    { message: 'Due date must be a valid ISO 8601 date string' },
+  )
   dueDate?: string;
 
   @IsString({ message: 'Project ID must be a string' })
@@ -38,7 +40,7 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString({ message: 'Milestone ID must be a string' })
   milestoneId?: string;
-  
+
   @IsOptional()
   @IsString({ message: 'Assigned team ID must be a string' })
   assigneeId?: string;

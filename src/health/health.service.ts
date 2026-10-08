@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
 
 @Injectable()
@@ -14,7 +14,9 @@ export class HealthService {
       const port = process.env.PORT || 3002;
       // Ping the health endpoint to keep the server/process active
       const response = await axios.get(`http://localhost:${port}/health`);
-      this.logger.log(`Health check completed. Status: ${response.data.status}`);
+      this.logger.log(
+        `Health check completed. Status: ${response.data.status}`,
+      );
     } catch (error) {
       this.logger.error('Health check trigger failed', error.message);
     }

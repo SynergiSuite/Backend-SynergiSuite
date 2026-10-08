@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>SynergiSuite | Task Notification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        html,
+        body {
+            margin: 0 auto !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+            background-color: #0A0A0B;
+            font-family: 'Inter', sans-serif;
+            color: #c7c6ca;
+        }
+        * {
+            -ms-text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+        table,
+        td {
+            mso-table-lspace: 0pt !important;
+            mso-table-rspace: 0pt !important;
+        }
+        table {
+            border-spacing: 0 !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+            margin: 0 auto !important;
+        }
+        a {
+            text-decoration: none;
+            color: #adc6ff;
+            transition: color 0.2s ease;
+        }
+        a:hover {
+            color: #4edea3;
+        }
+        .main-card {
+            background-color: #1d2022;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .badge-created {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #4edea3;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .badge-updated {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #adc6ff;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        .btn-primary {
+            background-color: #0566d9;
+            color: #ffffff !important;
+            font-weight: 600;
+            border-radius: 16px;
+            padding: 14px 28px;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(5, 102, 217, 0.4);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .detail-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: #919094;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        .detail-value {
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            color: #e0e3e5;
+        }
+        .priority-high {
+            color: #ffb4ab;
+            background-color: rgba(147, 0, 10, 0.2);
+            border: 1px solid rgba(255, 180, 171, 0.3);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+        .priority-medium {
+            color: #adc6ff;
+            background-color: rgba(0, 46, 106, 0.2);
+            border: 1px solid rgba(173, 198, 255, 0.3);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+        .priority-low {
+            color: #4edea3;
+            background-color: rgba(0, 56, 36, 0.2);
+            border: 1px solid rgba(78, 222, 163, 0.3);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body style="background-color: #0A0A0B; font-family: 'Inter', sans-serif; margin: 0; padding: 0;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #0A0A0B; min-height: 100vh; padding: 40px 20px;">
+        <tr>
+            <td align="center" valign="top">
+                <table width="100%" max-width="600" style="max-width: 600px;" border="0" cellpadding="0" cellspacing="0">
+                    <!-- Header -->
+                    <tr>
+                        <td align="center" style="padding-bottom: 24px;">
+                            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700; color: #e0e3e5; letter-spacing: 1px; display: inline-flex; align-items: center; gap: 8px;">
+                                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #0566d9; box-shadow: 0 0 8px #0566d9;"></span>
+                                SYNERGISUITE
+                            </span>
+                        </td>
+                    </tr>
+                    
+                    <!-- Main Card -->
+                    <tr>
+                        <td class="main-card" style="padding: 40px 32px; text-align: left;">
+                            <!-- Badge -->
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <% if (action === 'created') { %>
+                                    <span class="badge badge-created">Created</span>
+                                <% } else { %>
+                                    <span class="badge badge-updated">Updated</span>
+                                <% } %>
+                            </div>
+
+                            <!-- Title -->
+                            <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 12px; text-align: center; line-height: 1.3;">
+                                <%= action === 'created' ? 'New Task Assigned' : 'Task Updated' %>: <%= task.title %>
+                            </h1>
+                            <p style="font-size: 15px; line-height: 1.6; color: #c7c6ca; margin-top: 0; margin-bottom: 32px; text-align: center;">
+                                <%= action === 'created' ? 'A new task has been assigned to your team in' : 'A task has been updated in' %> 
+                                <strong style="color: #adc6ff;"><%= task.project.name %></strong>.
+                            </p>
+
+                            <!-- Task Details Grid -->
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 32px; background-color: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); padding: 24px;">
+                                <tr>
+                                    <td width="50%" style="padding-bottom: 16px; vertical-align: top;">
+                                        <div class="detail-label">Project</div>
+                                        <div class="detail-value"><%= task.project.name %></div>
+                                    </td>
+                                    <td width="50%" style="padding-bottom: 16px; vertical-align: top;">
+                                        <div class="detail-label">Status</div>
+                                        <div class="detail-value" style="text-transform: capitalize;"><%= task.status.replace('_', ' ') %></div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td width="50%" style="vertical-align: top;">
+                                        <div class="detail-label">Priority</div>
+                                        <div class="detail-value">
+                                            <span class="priority-<%= task.priority || 'low' %>">
+                                                <%= (task.priority || 'low').toUpperCase() %>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td width="50%" style="vertical-align: top;">
+                                        <div class="detail-label">Due Date</div>
+                                        <div class="detail-value"><%= task.due_date || 'N/A' %></div>
+                                    </td>
+                                </tr>
+                                <% if (task.description) { %>
+                                    <tr>
+                                        <td colspan="2" style="padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05);">
+                                            <div class="detail-label">Description</div>
+                                            <div style="font-size: 14px; line-height: 1.5; color: #c7c6ca; margin-top: 4px;"><%= task.description %></div>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </table>
+
+                            <!-- CTA -->
+                            <div style="text-align: center; margin-bottom: 16px;">
+                                <a href="#" class="btn-primary">View Task Details</a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td align="center" style="padding-top: 40px; padding-bottom: 20px;">
+                            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 600; color: #e0e3e5; opacity: 0.8; letter-spacing: 1px;">OBSIDIAN ENTERPRISE</span>
+                            <table border="0" cellpadding="0" cellspacing="0" style="margin-top: 12px; margin-bottom: 12px;">
+                                <tr>
+                                    <td style="font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;">
+                                        <a href="#">Privacy Policy</a>
+                                        <span style="color: #46464a; padding: 0 8px;">•</span>
+                                        <a href="#">Security Protocol</a>
+                                        <span style="color: #46464a; padding: 0 8px;">•</span>
+                                        <a href="#">Contact Support</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="font-size: 12px; color: #46464a; margin: 0; font-family: 'Inter', sans-serif;">
+                                &copy; 2026 SynergiSuite. Secure Intelligence Systems.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

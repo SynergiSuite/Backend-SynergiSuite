@@ -9,17 +9,30 @@ import { TeamsModule } from 'src/teams/teams.module';
 import { ProjectsModule } from 'src/projects/projects.module';
 import { forwardRef } from '@nestjs/common';
 import { DocumentAccessGuard, DocumentDeleteGuard } from './document.guard';
+import { ActivityModule } from 'src/activity/activity.module';
+import { DocumentsHelper } from './documents.helper';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Document]), 
-    UserModule, 
-    TeamsModule,
-    ProjectsModule,
-    forwardRef(() => MinIOModule)
+    TypeOrmModule.forFeature([Document]),
+    UserModule,
+    forwardRef(() => MinIOModule),
+    forwardRef(() => TeamsModule),
+    forwardRef(() => ProjectsModule),
+    ActivityModule,
   ],
-  providers: [DocumentsService, DocumentAccessGuard, DocumentDeleteGuard],
+  providers: [
+    DocumentsService,
+    DocumentsHelper,
+    DocumentAccessGuard,
+    DocumentDeleteGuard,
+  ],
   controllers: [DocumentsController],
-  exports: [DocumentsService, DocumentAccessGuard, DocumentDeleteGuard]
+  exports: [
+    DocumentsService,
+    DocumentsHelper,
+    DocumentAccessGuard,
+    DocumentDeleteGuard,
+  ],
 })
-export class DocumentsModule { }
+export class DocumentsModule {}

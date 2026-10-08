@@ -8,12 +8,12 @@ export class RedisService {
   private redisClient: RedisClientType;
   constructor() {
     this.redisClient = createClient({
-      // redis://default:AVJXAAIncDEwNGRhZTIzYjBjYTU0NGFmYjhiNWMyOWE5N2JiMzUzNnAxMjEwNzk@magical-puma-21079.upstash.io:6379
+      // redis://default:gQAAAAAAAYu8AAIocDJmMTM1NjQ0NmRiYjI0MDFkYTI3NDJmNmM3NGU1YzdkNHAyMTAxMzA4@hopeful-dingo-101308.upstash.io:6379
       // 'redis://redis:6379'
-      
-      url: 'redis://default:gQAAAAAAAYu8AAIocDJmMTM1NjQ0NmRiYjI0MDFkYTI3NDJmNmM3NGU1YzdkNHAyMTAxMzA4@hopeful-dingo-101308.upstash.io:6379',
+
+      url: 'redis://redis:6379',
       socket: {
-        tls: true,
+        tls: false,
       },
     });
     this.redisClient.connect();
@@ -32,9 +32,13 @@ export class RedisService {
   }
 
   async setWithExpiration(key: string, value: any, ttl: number): Promise<void> {
-    this.logger.log(`[InviteUser] Redis set with expiration | keyLength=${key.length} | ttl=${ttl}`);
+    this.logger.log(
+      `[InviteUser] Redis set with expiration | keyLength=${key.length} | ttl=${ttl}`,
+    );
     await this.redisClient.set(key, value, { EX: ttl });
-    this.logger.log(`[InviteUser] Redis set completed | keyLength=${key.length}`);
+    this.logger.log(
+      `[InviteUser] Redis set completed | keyLength=${key.length}`,
+    );
   }
 
   async generateUpdateEmailCode(
@@ -68,6 +72,7 @@ export class RedisService {
     invited: string,
     invitedBy: string,
     invitedAs: number,
+    businessId: number,
   ) {
     this.logger.log(
       `[InviteUser] Redis invitation token generation started | invitedEmail=${invited} | invitedBy=${invitedBy} | roleId=${invitedAs}`,
@@ -78,12 +83,42 @@ export class RedisService {
       invited: invited,
       invited_by: invitedBy,
       invited_as: invitedAs,
+      business_id: businessId,
     };
 
     const jsonObj = JSON.stringify(obj);
     await this.setWithExpiration(token, jsonObj, ttl);
     this.logger.log(
       `[InviteUser] Redis invitation token stored | invitedEmail=${invited} | ttl=${ttl} | tokenLength=${token.length}`,
+    );
+    return token;
+  }
+
+  async generateTokenForClientInvitation(
+    invited: string,
+    invitedBy: string,
+    clientId: string,
+    businessId: number,
+  ) {
+    this.logger.log(
+      `[ClientInvite] Redis invitation token generation started | clientEmail=${invited} | invitedBy=${invitedBy} | clientId=${clientId}`,
+    );
+    const token = await crypto.randomBytes(16).toString('hex');
+    const ttl = 3600;
+    const obj = {
+      invitation_type: 'client',
+      invited,
+      invited_by: invitedBy,
+      invited_as: 'client',
+      invited_as_role: 'client',
+      client_id: clientId,
+      business_id: businessId,
+    };
+
+    const jsonObj = JSON.stringify(obj);
+    await this.setWithExpiration(token, jsonObj, ttl);
+    this.logger.log(
+      `[ClientInvite] Redis invitation token stored | clientEmail=${invited} | ttl=${ttl} | tokenLength=${token.length}`,
     );
     return token;
   }

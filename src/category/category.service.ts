@@ -28,11 +28,11 @@ export class CategoryService {
   }
 
   findOne(id: number) {
-    const category = this.categoryRepository.findOne({ where: {id: id}})
+    const category = this.categoryRepository.findOne({ where: { id: id } });
     if (!category) {
-      throw new BadRequestException('Unable to find this category')
+      throw new BadRequestException('Unable to find this category');
     }
-    return category  
+    return category;
   }
 
   findAll() {

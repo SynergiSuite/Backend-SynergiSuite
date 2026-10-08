@@ -1,156 +1,208 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  forwardRef,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from './entities/team.entity';
-import { In, Repository } from 'typeorm';
-import { TeamMember } from './entities/team_members.entity';
-import { UserService } from '../user/user.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { TaskStatus } from 'src/projects/entities/task.entity';
+import { GroupService } from '../collab_station/services/group.service';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/entities/activity-log.entity';
+import { PaginationParams } from 'src/shared/pagination-params';
+import { TeamsHelper } from './teams.helper';
 
 @Injectable()
 export class TeamsService {
   private readonly logger = new Logger(TeamsService.name);
 
   constructor(
-    @InjectRepository(Team)
-    private readonly teamRepository: Repository<Team>,
-    @InjectRepository(TeamMember)
-    private readonly teamMemberRepository: Repository<TeamMember>,
-    private readonly userService: UserService,
-  ){}
-  
+    private readonly teamsHelper: TeamsHelper,
+    @Inject(forwardRef(() => GroupService))
+    private readonly groupService: GroupService,
+    private readonly activityService: ActivityService,
+  ) {}
+
   // Create new team
-  async create(createTeamDto: CreateTeamDto) {
+  async create(createTeamDto: CreateTeamDto, reqObj?: any) {
     this.logger.log(`Creating a new team: ${createTeamDto.name}`);
+
+    const [actor, leader] = await Promise.all([
+      reqObj?.email
+        ? this.teamsHelper.getUserWithBusiness(reqObj.email)
+        : Promise.resolve(null),
+      this.teamsHelper.findUserById(createTeamDto.leader_id),
+    ]);
+
+    if (!leader) {
+      throw new HttpException('Leader not found', HttpStatus.NOT_FOUND);
+    }
+
     try {
-      this.logger.log(`Finding leader for team: ${createTeamDto.name}`);
-      const leader = await this.userService.findOne(createTeamDto.leader_id);
-      const obj = {
-        name: createTeamDto.name,
-        description: createTeamDto.description,
-        business: leader.business,
-        leader
-        
-      }
-      const team = this.teamRepository.create(obj);
-      const result = await this.teamRepository.save(team);
-      this.logger.log(`Team created successfully: ${result.name}`);
+      const { savedTeam, groupId, memberIds } =
+        await this.teamsHelper.createTeam(createTeamDto, leader);
+      this.logger.log(`Team created successfully: ${savedTeam.name}`);
 
-      await this.addMembers(team, createTeamDto.members);
+      await this.activityService.log({
+        action: ActivityAction.CREATED,
+        module: 'teams',
+        entityType: 'Team',
+        entityId: savedTeam.id,
+        entityName: savedTeam.name,
+        actor: actor ?? leader,
+        businessId: leader.business.business_id,
+        after: {
+          id: savedTeam.id,
+          name: savedTeam.name,
+          description: savedTeam.description,
+          leaderId: leader.user_id,
+          memberIds,
+          groupId,
+        },
+      });
 
-      const data = await this.findOne(result.id);
-      return { 
-        data
-      }
-
+      return {
+        data: {
+          ...savedTeam,
+          members: memberIds,
+          groupId,
+        },
+      };
     } catch (error) {
-      this.logger.error(`Error creating team: ${createTeamDto.name}`, error.message);
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      this.logger.error(
+        `Error creating team: ${createTeamDto.name}`,
+        error.stack,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to create team. Process rolled back.',
+      );
     }
   }
 
   // Get all teams for business
-  async findAll(obj: any) {
+  async findAllWithTasks(
+    reqObj: { email: string },
+    pagination: PaginationParams = {},
+  ) {
+    this.logger.log(`Initiating to get team list for user: ${reqObj.email}`);
+
+    // Set defaults if the frontend doesn't provide them
+    const page = Number(pagination.page) || 1;
+    const limit = Number(pagination.limit) || 5;
+
     try {
-      this.logger.log(`Initiating to get team list`);
-      this.logger.log(`Getting user: ${obj.email}`);
-      const user = await this.userService.getUserWithBusiness(obj.email);
-      this.logger.log(`User found: ${user.email}`);
-      
-      this.logger.log(`Getting teams for user: ${user.email}`);
-      const teams = await this.teamRepository.find(
-        { 
-          where: {business: {business_id: user.business.business_id}},
-          relations:['leader', 'members', 'members.user']
-        }
-      ); 
+      const user = await this.teamsHelper.getUserWithBusiness(reqObj.email);
 
-      const teamsWithMembers = teams.map((team) => ({
-        ...team,
-        teamMembers: team.members.map((member) => member.user),
-      }));
+      this.logger.log(
+        `Getting teams for business ID: ${user.business.business_id} (Page: ${page}, Limit: ${limit})`,
+      );
 
-      this.logger.log(`Found ${teamsWithMembers.length} teams with member details for user: ${user.email}`);
-      return{
-        count: teamsWithMembers.length,
-        teams: teamsWithMembers
-      }
-    } catch (error) {
-      this.logger.error(`Error getting teams for user: ${obj.email}`, error.message);
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
-    }
-  };
+      const { teamsWithMembers, totalItems } =
+        await this.teamsHelper.findAllWithTasks(
+          user.business.business_id,
+          page,
+          limit,
+        );
 
-  // This function gets team details
-  async getTeamDetails(id: string) {
-    try {
-      this.logger.log(`Initiating to get team details`);
-      this.logger.log(`Getting team: ${id}`);
-      const team = await this.findOne(id);
-      this.logger.log(`Team found: ${team.name}`);
+      this.logger.log(
+        `Returned ${teamsWithMembers.length} teams out of ${totalItems} total`,
+      );
+
+      // Return standardized pagination metadata
       return {
-        team
-      }
+        data: teamsWithMembers,
+        meta: {
+          totalItems,
+          itemCount: teamsWithMembers.length,
+          itemsPerPage: limit,
+          totalPages: Math.ceil(totalItems / limit),
+          currentPage: page,
+        },
+      };
     } catch (error) {
-      this.logger.error(`Error getting team details: ${id}`, error.message);
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      this.logger.error(
+        `Error getting teams for user: ${reqObj.email}`,
+        error.stack,
+      );
+
+      if (error.status) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'An error occurred while fetching teams',
+      );
     }
   }
 
-  async getTeamProgress(id: string) {
+  async findAll(reqObj: { email: string }) {
     try {
-      this.logger.log(`Initiating to get team progress: ${id}`);
-      const team = await this.teamRepository.findOne({
-        where: { id },
-        relations: ['business', 'projects', 'projects.tasks', 'tasks'],
-      });
+      this.logger.log(`Initiating to get all teams for user: ${reqObj.email}`);
+      const user = await this.teamsHelper.getUserWithBusiness(reqObj.email);
+      const teams = await this.teamsHelper.findAll(user.business.business_id);
+      this.logger.log(`Returned ${teams.length} teams`);
+      return { data: teams };
+    } catch (error) {
+      this.logger.error(
+        `Error getting all teams for user: ${reqObj.email}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'An error occurred while fetching teams',
+      );
+    }
+  }
 
-      if (!team) {
-        this.logger.error(`Team not found for progress: ${id}`);
-        throw new HttpException('Invalid team ID', HttpStatus.BAD_REQUEST);
-      }
+  // This function gets team details
+  async getTeamDetails(id: string) {
+    this.logger.log(`Initiating request to fetch team details for ID: ${id}`);
 
-      this.logger.log(`Calculating project and task progress for team: ${id}`);
-      const projectTasks = team.projects.flatMap((project) => project.tasks ?? []);
-      const directTasks = team.tasks ?? [];
+    try {
+      // Since findOne now handles the 404, we just await it safely
+      const team = await this.findOne(id);
 
-      const uniqueTasks = Array.from(
-        new Map([...projectTasks, ...directTasks].map((task) => [task.id, task])).values(),
+      this.logger.log(`Successfully fetched details for team: ${team.name}`);
+
+      return {
+        data: team, // 'data' wrapper is standard practice for REST APIs
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error getting team details for ID: ${id}`,
+        error.stack,
       );
 
-      const statusCounts = {
-        todo: 0,
-        in_progress: 0,
-        review: 0,
-        completed: 0,
-      };
-
-      for (const task of uniqueTasks) {
-        if (task.status === TaskStatus.TODO) {
-          statusCounts.todo += 1;
-        } else if (task.status === TaskStatus.IN_PROGRESS) {
-          statusCounts.in_progress += 1;
-        } else if (task.status === TaskStatus.REVIEW) {
-          statusCounts.review += 1;
-        } else if (task.status === TaskStatus.COMPLETED) {
-          statusCounts.completed += 1;
-        }
+      // Preserve the 404 NotFoundException thrown by findOne
+      if (error instanceof HttpException) {
+        throw error;
       }
 
-      const totalTasks = uniqueTasks.length;
-      const progress =
-        totalTasks > 0
-          ? Number((((statusCounts.review + statusCounts.completed) / totalTasks) * 100).toFixed(2))
-          : 0;
+      // Throw 500 for actual unexpected database errors
+      throw new InternalServerErrorException('Failed to retrieve team details');
+    }
+  }
 
+  // This function gets team progress
+  async getTeamProgress(id: string) {
+    this.logger.log(`Initiating to get team progress: ${id}`);
+
+    try {
+      const { team, totalProjects, totalTasks, statusCounts, progress } =
+        await this.teamsHelper.getTeamProgress(id);
+
+      this.logger.log(`Calculating project and task progress for team: ${id}`);
       this.logger.log(`Team progress calculated successfully: ${id}`);
+
       return {
         teamId: team.id,
         teamName: team.name,
-        totalProjects: team.projects.length,
+        totalProjects,
         totalTasks,
         todoTasks: statusCounts.todo,
         inProgressTasks: statusCounts.in_progress,
@@ -159,211 +211,175 @@ export class TeamsService {
         progress,
       };
     } catch (error) {
-      this.logger.error(`Error getting team progress: ${id}`, error.message);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      this.logger.error(`Error getting team progress: ${id}`, error.stack);
+
+      if (error instanceof HttpException) throw error;
+
+      throw new InternalServerErrorException(
+        'An error occurred while calculating team progress',
+      );
     }
   }
 
   // This function updates team name
-  async updateTeam(updateTeamDto: UpdateTeamDto) {
+  async updateTeam(updateTeamDto: UpdateTeamDto, reqObj?: any) {
+    this.logger.log(`Initiating to update team: ${updateTeamDto.id}`);
+
+    const [actor, team] = await Promise.all([
+      reqObj?.email
+        ? this.teamsHelper.getUserWithBusiness(reqObj.email)
+        : Promise.resolve(null),
+      this.findOne(updateTeamDto.id),
+    ]);
+
+    const before = {
+      name: team.name,
+      description: team.description,
+      memberIds: team.members?.map((member) => member.user.user_id) ?? [],
+    };
+
     try {
-      this.logger.log(`Initiating to update team name: ${updateTeamDto.id}`);
-      const team = await this.findOne(updateTeamDto.id);
-      team.name = updateTeamDto.name;
-      team.description = updateTeamDto.description;
-      await this.teamRepository.save(team);
-      await this.updateMembers(team, updateTeamDto.members)
-      return {message: 'Team name updated successfully', team};
-
-    } catch (error) {
-      this.logger.error(`Error updating team name: ${updateTeamDto.id}`, error.message);
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  // This function updates team members (add)
-  async updateMembers(team: Team, desiredUserIds: number[]) {
-    this.logger.log(`Initiating to sync team members for team: ${team.id}`);
-    try {
-      const currentTeamMembers = await this.teamMemberRepository.find({
-        where: { team: { id: team.id } },
-        relations: ['user'],
-      });
-      const currentUserIds = currentTeamMembers.map(tm => tm.user.user_id);
-      const userIdsToAdd = desiredUserIds.filter(id => !currentUserIds.includes(id));
-      const teamMembersToRemove = currentTeamMembers.filter(
-        tm => !desiredUserIds.includes(tm.user.user_id)
-      );
-      
-      if (userIdsToAdd.length > 0) {
-        this.logger.log(`Adding members ${userIdsToAdd.length} ids.`);
-        await this.addMembers(team, userIdsToAdd);
-      }
-
-      if (teamMembersToRemove.length > 0) {
-        const userIdsToRemove = teamMembersToRemove.map(tm => tm.user.user_id);
-        this.logger.log(`Removing members: [${userIdsToRemove.join(', ')}]`);
-        await this.teamMemberRepository.remove(teamMembersToRemove);
-      }
-
-      if (userIdsToAdd.length === 0 && teamMembersToRemove.length === 0) {
-        this.logger.log(`No member changes required for team: ${team.name}`);
-      }
-      
-      this.logger.log(`Members synced successfully for team: ${team.name}`);
-      return { message: 'Members updated successfully', team };
-
-    } catch (error) {
-      this.logger.error(`Error syncing members for team: ${team.id}`, error.stack); 
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  // This function removes members from team
-  async removeMembers(team_id: string, memberUserIds: number[]) {
-    try {
-      this.logger.log(`Initiating removal of members from team: ${team_id}`);
-
-      // 1. Find the team and its current member entries (TeamMember)
-      const team = await this.teamRepository.findOne({
-        where: { id: team_id },
-        relations: ['members', 'members.user'], 
-      });
-
-      if (!team) {
-        this.logger.warn(`Team not found: ${team_id}`);
-        throw new NotFoundException(`Team with ID ${team_id} not found`);
-      }
-      
-      const membersToRemove = team.members.filter((teamMember) =>
-        memberUserIds.includes(teamMember.user.user_id),
+      const { savedTeam, memberIds } = await this.teamsHelper.updateTeam(
+        team,
+        updateTeamDto,
       );
 
-      if (membersToRemove.length === 0) {
-        this.logger.warn(`No valid members found to remove in team: ${team_id}`);
-        throw new HttpException(
-          'None of the provided members were found in this team',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+      const after = {
+        name: savedTeam.name,
+        description: savedTeam.description,
+        memberIds,
+      };
 
-      // 5. Remove the TeamMember join-table entries
-      await this.teamMemberRepository.remove(membersToRemove);
-
-      const removedIds = membersToRemove.map((tm) => tm.user.user_id);
-      this.logger.log(
-        `Removed ${membersToRemove.length} members [${removedIds.join(', ')}] from team: ${team.name}`,
+      await this.activityService.logFieldChanges(
+        {
+          action: ActivityAction.UPDATED,
+          module: 'teams',
+          entityType: 'Team',
+          entityId: savedTeam.id,
+          entityName: savedTeam.name,
+          actor: actor ?? team.leader,
+          businessId: team.business.business_id,
+        },
+        before,
+        after,
+        ['name', 'description', 'memberIds'],
       );
 
       return {
-        message: `Successfully removed ${membersToRemove.length} members from team`,
-        removedMemberIds: removedIds,
+        message: 'Team updated successfully',
+        data: {
+          ...savedTeam,
+          memberIds,
+        },
       };
-
     } catch (error) {
       this.logger.error(
-        `Error removing members from team: ${team_id}`,
+        `Error updating team: ${updateTeamDto.id}`,
         error.stack,
       );
 
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        'An error occurred while removing members',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException('Failed to update team');
     }
   }
 
   // This function deletes team.
-  async removeTeam(id: string) {
+  async removeTeam(id: string, reqObj?: any) {
     this.logger.log(`Initiating to delete team: ${id}`);
-    try {
-      this.logger.log(`Getting team: ${id}`);
-      const team = await this.findOne(id);
-      if (!team) {
-        this.logger.error(`Team not found: ${id}`);
-        throw new HttpException('Invalid team ID', HttpStatus.BAD_REQUEST);
-      }
-      this.logger.log(`Deleting team: ${id}`);
 
-      this.logger.log(`Deleting team members: ${id}`);
-      await this.teamRepository.delete(id);
+    const [actor, team] = await Promise.all([
+      reqObj?.email
+        ? this.teamsHelper.getUserWithBusiness(reqObj.email)
+        : Promise.resolve(null),
+      this.findOne(id),
+    ]);
+
+    const before = {
+      id: team.id,
+      name: team.name,
+      description: team.description,
+      leaderId: team.leader?.user_id,
+      memberIds: team.members?.map((member) => member.user.user_id) ?? [],
+    };
+
+    try {
+      this.logger.log(`Executing database deletion for team: ${id}`);
+
+      await this.teamsHelper.removeTeam(id);
+
+      await this.activityService.log({
+        action: ActivityAction.DELETED,
+        module: 'teams',
+        entityType: 'Team',
+        entityId: team.id,
+        entityName: team.name,
+        actor: actor ?? team.leader,
+        businessId: team.business.business_id,
+        before,
+      });
+
       this.logger.log(`Team deleted successfully: ${id}`);
-      return {message: 'Team deleted successfully'};
+
+      return { message: 'Team deleted successfully' };
     } catch (error) {
-      this.logger.error(`Error deleting team: ${id}`, error.message);
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      this.logger.error(`Error deleting team: ${id}`, error.stack);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'An error occurred while deleting the team',
+      );
     }
   }
 
-
-
   // Helper Functions
 
-  findOne(id: string) {
-    return this.teamRepository.findOne({where: {id}, relations:['leader','business', 'members', 'members.user']});
+  async findOne(id: string) {
+    return await this.teamsHelper.findOne(id);
   }
 
-  async findTeamMember(teamId: string){
-    const existingTeamMembers = await this.teamMemberRepository.find({
-      where: { team: { id: teamId } },
-      relations: ['user','user.business'],
-    });
-    return existingTeamMembers;
+  async findTeamMember(teamId: string) {
+    return await this.teamsHelper.findTeamMember(teamId);
   }
 
   async findTeamsForUser(userId: number) {
-    const teamMembers = await this.teamMemberRepository.find({
-      where: { user: { user_id: userId } },
-      relations: ['team'],
-    });
-    return teamMembers.map(tm => tm.team);
+    return await this.teamsHelper.findTeamsForUser(userId);
   }
 
   async addMembers(team: Team, members: number[]) {
     if (members && members.length > 0) {
       this.logger.log(`Adding ${members.length} members to team: ${team.name}`);
-  
+
       for (const memberId of members) {
-        const memberUser = await this.userService.findOne(memberId);
-  
+        const memberUser = await this.teamsHelper.findUserById(memberId);
+
         // no need to re-check existence or business because guard already did that
-        const teamMember = this.teamMemberRepository.create({
-          user: memberUser,
-          team,
-        });
-        await this.teamMemberRepository.save(teamMember);
+        await this.teamsHelper.addTeamMember(team, memberUser);
+
+        // Sync to collab_station group
+        await this.groupService.addMemberByTeamId(team.id, memberId);
       }
-    }
-    return true; 
-  }
-
-  async findTeams(teamIds: string[]) {
-    const teams = await this.teamRepository.find({where: {id: In(teamIds)}});
-    return teams;
-  }
-
-  async findValidTeams(teamIds: string[], businessId: number): Promise<boolean> {
-  for (const id of teamIds) {
-    const team = await this.teamRepository.findOne({ where: { id }, relations: ['business'] });
-    if (!team || team.business.business_id !== businessId) {
-      return false;
-    }
-  }
-  return true;
-}
-
-  async findValidTeam(teamId: string, businessId: number): Promise<boolean> {
-    const team = await this.teamRepository.findOne({ where: { id: teamId }, relations: ['business'] });
-    if (!team || team.business.business_id !== businessId) {
-      return false;
     }
     return true;
   }
 
+  async findTeams(teamIds: string[]) {
+    return await this.teamsHelper.findTeams(teamIds);
+  }
+
+  async findValidTeams(
+    teamIds: string[],
+    businessId: number,
+  ): Promise<boolean> {
+    return await this.teamsHelper.findValidTeams(teamIds, businessId);
+  }
+
+  async findValidTeam(teamId: string, businessId: number): Promise<boolean> {
+    return await this.teamsHelper.findValidTeam(teamId, businessId);
+  }
+
+  async getTeamDetailsForUser(employeeId: number) {
+    return this.teamsHelper.getTeamDetailsForUser(employeeId);
+  }
 }

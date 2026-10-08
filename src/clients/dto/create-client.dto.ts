@@ -5,7 +5,11 @@ import {
   MinLength,
   IsOptional,
   IsInt,
+  IsEnum,
+  IsNumber,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ClientPaymentType } from '../entities/client.entity';
 
 export class CreateClientDto {
   @IsString({ message: 'Client name must be a string' })
@@ -34,4 +38,15 @@ export class CreateClientDto {
 
   @IsInt({ message: 'Priority must be an integer' })
   priority: number;
+
+  @IsOptional()
+  @IsEnum(ClientPaymentType, {
+    message: 'Payment type must be either per_hour or each_milestone',
+  })
+  paymentType?: ClientPaymentType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Amount must be a number' })
+  amount?: number;
 }

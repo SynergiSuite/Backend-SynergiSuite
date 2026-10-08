@@ -1,64 +1,98 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  Query,
+  Delete,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
-import {  UpdateTeamDto } from './dto/update-team.dto';
+import { UpdateTeamDto } from './dto/update-team.dto';
 import { JwtGuard } from 'src/shared/auth.guard';
 import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
-import { AddTeamMembersGuard, createTeamGuard, RemoveTeamMembersGuard, roleGuard, teamProgressGuard } from './team.guard';
-import { Request } from 'express';
-import { checkHasBusiness } from '../business/business.guard';
-import { validAuthorizationGuard } from './team.guard';
+import {
+  AddTeamMembersGuard,
+  CreateTeamGuard,
+  roleGuard,
+  validAuthorizationGuard,
+} from './team.guard';
+import { CheckHasBusiness } from '../business/business.guard';
+import { FrontendSecretGuard } from 'src/shared/frontend-secret.guard';
 
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
+  // This creates new teams
   @Post('/create')
-  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard, createTeamGuard)
-  create(@Body() createTeamDto: CreateTeamDto) {
-    return this.teamsService.create(createTeamDto);
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CreateTeamGuard)
+  create(@Req() req: Request, @Body() createTeamDto: CreateTeamDto) {
+    return this.teamsService.create(createTeamDto, req.user);
   }
 
+  // This gets teams and tasks related to the team of the user. (with pagination)
+  @Get('get-all-teams-with-tasks')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CheckHasBusiness)
+  findAllWithTasks(
+    @Req() req: Request,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.teamsService.findAllWithTasks(req.user as any, {
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  // This gets the list of teams
   @Get('get-all-teams')
-  @UseGuards(JwtGuard, IsVerifiedGuard, checkHasBusiness)
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CheckHasBusiness)
   findAll(@Req() req: Request) {
-    return this.teamsService.findAll(req.user);
+    return this.teamsService.findAll(req.user as any);
   }
 
-  @Post('get-team-details')
+  // This will get team details
+  @Get('get-team-details/:team_id')
   @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard)
-  getTeamDetails(@Body('team') team_id: string) {
+  getTeamDetails(@Param('team_id') team_id: string) {
     return this.teamsService.getTeamDetails(team_id);
   }
 
-  @Get('team-progress/:teamId')
-  @UseGuards(JwtGuard, IsVerifiedGuard, teamProgressGuard)
-  getTeamProgress(@Param('teamId') teamId: string) {
-    return this.teamsService.getTeamProgress(teamId);
+  // This will get the progress of each team.
+  @Get('team-progress/:team_id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, validAuthorizationGuard)
+  getTeamProgress(@Param('team_id') team_id: string) {
+    return this.teamsService.getTeamProgress(team_id);
   }
 
-  @Post('update-team')
-  @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard, AddTeamMembersGuard)
-  updateTeam(@Body() updateTeamDto: UpdateTeamDto) {
-    return this.teamsService.updateTeam(updateTeamDto);
+  // This updates teams
+  @Post('update-team/:team_id')
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    validAuthorizationGuard,
+    roleGuard,
+    AddTeamMembersGuard,
+  )
+  updateTeam(
+    @Req() req: Request,
+    @Body() updateTeamDto: UpdateTeamDto,
+    @Param('team_id') team_id: string,
+  ) {
+    updateTeamDto.id = team_id;
+    return this.teamsService.updateTeam(updateTeamDto, req.user);
   }
 
-  // @Post('update-members')
-  // @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard, AddTeamMembersGuard)
-  // updateMembers(@Body() updateMembersDto: AddMembersDto) {
-  //   return this.teamsService.updateMembers(updateMembersDto);
-  // }
-
-  @Post('remove-members')
-  @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard, roleGuard, RemoveTeamMembersGuard)
-  removeMembers(@Body() team_id: string, members: []) {
-    return this.teamsService.removeMembers(team_id, members);
+  // This removes a team
+  @Delete('remove-team/:team_id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, roleGuard)
+  removeTeam(@Req() req: Request, @Param('team_id') teamID: string) {
+    return this.teamsService.removeTeam(teamID, req.user);
   }
-
-  @Post('remove-team')
-  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard)
-  removeTeam(@Body('team_id') teamID: string) {
-    return this.teamsService.removeTeam(teamID);
-  }
-
 }

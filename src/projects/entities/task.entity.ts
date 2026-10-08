@@ -15,7 +15,6 @@ import {
   MaxLength,
   IsOptional,
   IsEnum,
-  IsDate,
 } from 'class-validator';
 import { Project } from 'src/projects/entities/project.entity';
 import { Team } from 'src/teams/entities/team.entity';

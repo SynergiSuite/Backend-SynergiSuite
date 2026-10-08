@@ -2,7 +2,6 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  OneToOne,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -36,7 +35,7 @@ export class User {
   @Column({ nullable: true })
   token_digest: string;
 
-  @Column({ nullable: true, default: "0" })
+  @Column({ nullable: true, default: '0' })
   salary: string;
 
   @Column({ nullable: false, default: false })
@@ -58,5 +57,4 @@ export class User {
 
   @OneToMany(() => Team, (team) => team.leader)
   leads: Team[];
-
 }
