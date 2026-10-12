@@ -11,6 +11,7 @@ import { Business } from '../../business/entities/business.entity';
 import { Role } from '../../roles/entities/role.entity';
 import { TeamMember } from '../../teams/entities/team_members.entity';
 import { Team } from '../../teams/entities/team.entity';
+import { Task } from '../../projects/entities/task.entity';
 
 @Entity({ name: 'users' })
 export class User {
@@ -57,4 +58,7 @@ export class User {
 
   @OneToMany(() => Team, (team) => team.leader)
   leads: Team[];
+
+  @OneToMany(() => Task, (task) => task.assignee)
+  assignedTasks: Task[];
 }

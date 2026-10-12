@@ -23,15 +23,17 @@ export class ProjectNotificationsService {
   ): Promise<void> {
     try {
       const task = await this.projectsHelper.findTask(taskId);
-      if (!task?.teams?.length) return;
+      if (!task || (!task.teams?.length && !task.assignee)) return;
 
       const recipients = new Map<
         string,
         { userId: number; email: string; name: string }
       >();
-      const memberships = await Promise.all(
-        task.teams.map((team) => this.teamsService.findTeamMember(team.id)),
-      );
+      const memberships = task.teams?.length
+        ? await Promise.all(
+            task.teams.map((team) => this.teamsService.findTeamMember(team.id)),
+          )
+        : [];
 
       for (const teamMembers of memberships) {
         for (const membership of teamMembers) {
@@ -44,6 +46,14 @@ export class ProjectNotificationsService {
             });
           }
         }
+      }
+
+      if (task.assignee?.email && !recipients.has(task.assignee.email)) {
+        recipients.set(task.assignee.email, {
+          userId: task.assignee.user_id,
+          email: task.assignee.email,
+          name: task.assignee.name,
+        });
       }
 
       if (recipients.size === 0) return;

@@ -24,9 +24,10 @@ import {
   ClientHasOngoingProjectGuard,
   ValidClientFeedbackSubmissionGuard,
 } from './client_feedback.guard';
+import { FrontendSecretGuard } from 'src/shared/frontend-secret.guard';
 
 @Controller('client-feedback')
-@UseGuards(JwtGuard, IsVerifiedGuard)
+@UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
 export class ClientFeedbackController {
   constructor(private readonly clientFeedbackService: ClientFeedbackService) {}
 

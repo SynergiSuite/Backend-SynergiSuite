@@ -42,8 +42,11 @@ export class CreateTaskDto {
   milestoneId?: string;
 
   @IsOptional()
-  @IsString({ message: 'Assigned team ID must be a string' })
-  assigneeId?: string;
+  @IsString({ message: 'Team ID must be a string' })
+  teamId?: string;
+
+  @IsOptional()
+  assigneeId?: any;
 
   @IsOptional()
   @IsString({ message: 'Project name must be a string' })

@@ -58,7 +58,7 @@ export class TeamsController {
 
   // This will get team details
   @Get('get-team-details/:team_id')
-  @UseGuards(JwtGuard, IsVerifiedGuard, validAuthorizationGuard)
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, validAuthorizationGuard)
   getTeamDetails(@Param('team_id') team_id: string) {
     return this.teamsService.getTeamDetails(team_id);
   }

@@ -184,22 +184,20 @@ export class validRequestForTask implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    this.logger.log(`Checking if the request is valid for creation.`);
+    this.logger.log(`Checking if the request is valid for task creation.`);
     const request = context.switchToHttp().getRequest();
     const body = request.body;
     const user = request.user;
     const projectId = body.projectId;
-    const rawTeamIds = body.assigneeId;
-    console.log(body);
+    const rawTeamId =
+      body.teamId ||
+      (typeof body.assigneeId === 'string' && isNaN(Number(body.assigneeId))
+        ? body.assigneeId
+        : undefined);
 
     if (!projectId) {
       this.logger.error(`Project ID not provided.`);
       throw new BadRequestException('Project ID is required.');
-    }
-
-    if (!rawTeamIds) {
-      this.logger.error(`No teams provided.`);
-      throw new BadRequestException('No teams provided.');
     }
 
     this.logger.log(`Getting business.`);
@@ -226,15 +224,17 @@ export class validRequestForTask implements CanActivate {
       throw new BadRequestException('Project is not valid for this business.');
     }
 
-    this.logger.log(`Checking if teams are valid.`);
-    const teamsValidity = await this.teamService.findValidTeam(
-      rawTeamIds,
-      businessId,
-    );
+    if (rawTeamId) {
+      this.logger.log(`Checking if team is valid.`);
+      const teamsValidity = await this.teamService.findValidTeam(
+        rawTeamId,
+        businessId,
+      );
 
-    if (!teamsValidity) {
-      this.logger.error(`Teams are not valid for this business.`);
-      throw new BadRequestException('Teams are not valid for this business.');
+      if (!teamsValidity) {
+        this.logger.error(`Team is not valid for this business.`);
+        throw new BadRequestException('Team is not valid for this business.');
+      }
     }
 
     this.logger.log(`Request is valid for this business.`);

@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Business } from '../business/entities/business.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Milestone } from '../milestone/entities/milestone.entity';
 import { Team } from '../teams/entities/team.entity';
+import { User } from '../user/entities/user.entity';
 import { Project } from './entities/project.entity';
 import { Task } from './entities/task.entity';
 
@@ -37,10 +38,12 @@ export interface CreateTaskRecord {
   project: Project;
   teams: Team[];
   milestone?: Milestone | null;
+  assignee?: User | null;
 }
 
 @Injectable()
 export class ProjectsHelper {
+  private readonly logger = new Logger(ProjectsHelper.name);
   private readonly pageSize = 9;
 
   constructor(
@@ -49,6 +52,36 @@ export class ProjectsHelper {
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
   ) {}
+
+  async ensureTaskAssigneeColumn(): Promise<void> {
+    try {
+      await this.taskRepository.query(`
+        ALTER TABLE tasks
+          ADD COLUMN IF NOT EXISTS assignee_id integer;
+
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_tasks_assignee'
+          ) THEN
+            ALTER TABLE tasks
+              ADD CONSTRAINT fk_tasks_assignee
+              FOREIGN KEY (assignee_id) REFERENCES users(user_id) ON DELETE SET NULL;
+          END IF;
+        END
+        $$;
+
+        CREATE INDEX IF NOT EXISTS idx_tasks_assignee_id
+          ON tasks (assignee_id);
+      `);
+      this.logger.log('Task schema verified (assignee_id column ready).');
+    } catch (error) {
+      this.logger.error(
+        'Failed to ensure assignee_id column on tasks table',
+        error.stack,
+      );
+    }
+  }
 
   async createProject(input: CreateProjectRecord): Promise<Project> {
     return this.projectRepository.manager.transaction(async (manager) => {
@@ -82,6 +115,8 @@ export class ProjectsHelper {
     const query = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.tasks', 'tasks')
+      .leftJoinAndSelect('tasks.assignee', 'taskAssignee')
+      .leftJoinAndSelect('tasks.teams', 'taskTeams')
       .leftJoinAndSelect('project.teams', 'teams')
       .leftJoinAndSelect('project.client', 'client')
       .where('project.business_id = :businessId', {
@@ -154,6 +189,7 @@ export class ProjectsHelper {
       project: input.project,
       teams: input.teams,
       milestone: input.milestone,
+      assignee: input.assignee,
     });
   }
 
@@ -194,7 +230,7 @@ export class ProjectsHelper {
   findTask(id: string) {
     return this.taskRepository.findOne({
       where: { id },
-      relations: ['project', 'project.business', 'teams'],
+      relations: ['project', 'project.business', 'teams', 'assignee', 'milestone'],
     });
   }
 

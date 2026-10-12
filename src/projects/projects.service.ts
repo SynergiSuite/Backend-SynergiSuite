@@ -5,6 +5,7 @@ import {
   Logger,
   Inject,
   forwardRef,
+  OnModuleInit,
 } from '@nestjs/common';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -25,7 +26,7 @@ import { ProjectsHelper } from './projects.helper';
 import { ProjectNotificationsService } from './project-notifications.service';
 
 @Injectable()
-export class ProjectsService {
+export class ProjectsService implements OnModuleInit {
   private readonly logger = new Logger(ProjectsService.name);
   constructor(
     private readonly projectsHelper: ProjectsHelper,
@@ -38,6 +39,10 @@ export class ProjectsService {
     private readonly projectNotifications: ProjectNotificationsService,
     private readonly activityService: ActivityService,
   ) {}
+
+  async onModuleInit() {
+    await this.projectsHelper.ensureTaskAssigneeColumn();
+  }
 
   // This Function creates new projects.
   async create(reqObj: any, createProjectDto: CreateProjectDto) {
@@ -223,16 +228,65 @@ export class ProjectsService {
       // Project/business validation handled by guards.
       const project = await this.projectsHelper.findProject(
         createTaskDto.projectId,
-        ['business'],
+        ['business', 'teams', 'teams.members', 'teams.members.user', 'teams.leader'],
       );
 
       const milestone = createTaskDto.milestoneId
         ? await this.milestoneService.findOneWithId(createTaskDto.milestoneId)
         : null;
 
-      const team = createTaskDto.assigneeId
-        ? await this.teamService.findOne(createTaskDto.assigneeId)
-        : null;
+      let team: any = null;
+      let assigneeUser: any = null;
+
+      // 1. Resolve employee if assigneeId is provided and numeric
+      const numericAssigneeId =
+        createTaskDto.assigneeId !== undefined &&
+        createTaskDto.assigneeId !== null &&
+        !isNaN(Number(createTaskDto.assigneeId))
+          ? Number(createTaskDto.assigneeId)
+          : null;
+
+      if (numericAssigneeId) {
+        assigneeUser = await this.userHelper.findOne(numericAssigneeId);
+        if (!assigneeUser) {
+          throw new HttpException('Assignee user not found', HttpStatus.BAD_REQUEST);
+        }
+      }
+
+      // 2. Resolve team
+      const targetTeamId =
+        createTaskDto.teamId ||
+        (typeof createTaskDto.assigneeId === 'string' &&
+        isNaN(Number(createTaskDto.assigneeId))
+          ? createTaskDto.assigneeId
+          : null);
+
+      if (targetTeamId) {
+        team = await this.teamService.findOne(targetTeamId);
+        if (!team) {
+          throw new HttpException('Team not found', HttpStatus.BAD_REQUEST);
+        }
+      } else if (assigneeUser && project?.teams?.length) {
+        team =
+          project.teams.find(
+            (t) =>
+              t.leader?.user_id === assigneeUser.user_id ||
+              t.members?.some((m) => m.user?.user_id === assigneeUser.user_id),
+          ) ?? null;
+      }
+
+      // 3. If assigneeUser & team are both set, verify membership
+      if (assigneeUser && team) {
+        const isMember =
+          team.leader?.user_id === assigneeUser.user_id ||
+          team.members?.some((m) => m.user?.user_id === assigneeUser.user_id);
+        if (!isMember) {
+          throw new HttpException(
+            `Assigned employee is not a member of team "${team.name}"`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      }
 
       // Create the task
       const task = this.projectsHelper.createTask({
@@ -244,6 +298,7 @@ export class ProjectsService {
         project: project,
         teams: team ? [team] : [],
         milestone: milestone,
+        assignee: assigneeUser,
       });
 
       const result = await this.projectsHelper.saveTask(task);
@@ -276,6 +331,8 @@ export class ProjectsService {
             priority: result.priority,
             due_date: result.due_date,
             projectId: project.id,
+            assigneeId: assigneeUser?.user_id,
+            teamId: team?.id,
           },
         })
         .catch((err) => {
@@ -302,7 +359,13 @@ export class ProjectsService {
     this.logger.log(`Initiating to find project`);
     const project = await this.projectsHelper.findProjectByName(projectName, [
       'tasks',
+      'tasks.teams',
+      'tasks.assignee',
+      'tasks.milestone',
       'teams',
+      'teams.members',
+      'teams.members.user',
+      'teams.leader',
       'client',
     ]);
     if (!project) {
@@ -325,6 +388,8 @@ export class ProjectsService {
         status: task.status,
         priority: task.priority,
         due_date: task.due_date,
+        assigneeId: task.assignee?.user_id,
+        teamId: task.teams?.[0]?.id,
       };
 
       if (updateTaskDto.title !== undefined) {
@@ -342,6 +407,72 @@ export class ProjectsService {
       if (updateTaskDto.due_date !== undefined) {
         task.due_date = updateTaskDto.due_date;
       }
+      if (updateTaskDto.milestoneId !== undefined) {
+        task.milestone = updateTaskDto.milestoneId
+          ? await this.milestoneService.findOneWithId(updateTaskDto.milestoneId)
+          : null;
+      }
+
+      // Assignee & Team update
+      if (
+        updateTaskDto.teamId !== undefined ||
+        updateTaskDto.assigneeId !== undefined
+      ) {
+        let team: any = task.teams?.[0] ?? null;
+        let assigneeUser: any = task.assignee ?? null;
+
+        if (updateTaskDto.assigneeId !== undefined) {
+          if (
+            updateTaskDto.assigneeId === null ||
+            updateTaskDto.assigneeId === ''
+          ) {
+            assigneeUser = null;
+          } else if (!isNaN(Number(updateTaskDto.assigneeId))) {
+            assigneeUser = await this.userHelper.findOne(
+              Number(updateTaskDto.assigneeId),
+            );
+            if (!assigneeUser) {
+              throw new HttpException(
+                'Assignee user not found',
+                HttpStatus.BAD_REQUEST,
+              );
+            }
+          }
+        }
+
+        const targetTeamId =
+          updateTaskDto.teamId ||
+          (typeof updateTaskDto.assigneeId === 'string' &&
+          isNaN(Number(updateTaskDto.assigneeId))
+            ? updateTaskDto.assigneeId
+            : null);
+
+        if (targetTeamId) {
+          team = await this.teamService.findOne(targetTeamId);
+          if (!team) {
+            throw new HttpException('Team not found', HttpStatus.BAD_REQUEST);
+          }
+        }
+
+        if (assigneeUser && team) {
+          const isMember =
+            team.leader?.user_id === assigneeUser.user_id ||
+            team.members?.some(
+              (m) => m.user?.user_id === assigneeUser.user_id,
+            );
+          if (!isMember) {
+            throw new HttpException(
+              `Assigned employee is not a member of team "${team.name}"`,
+              HttpStatus.BAD_REQUEST,
+            );
+          }
+        }
+
+        task.assignee = assigneeUser;
+        if (team) {
+          task.teams = [team];
+        }
+      }
 
       const result = await this.projectsHelper.saveTask(task);
       this.logger.log(`Task updated successfully.`);
@@ -351,6 +482,8 @@ export class ProjectsService {
         status: result.status,
         priority: result.priority,
         due_date: result.due_date,
+        assigneeId: result.assignee?.user_id,
+        teamId: result.teams?.[0]?.id,
       };
 
       // Notifications should not depend on audit logging.
@@ -404,6 +537,8 @@ export class ProjectsService {
       const project = await this.projectsHelper.findProject(token, [
         'tasks',
         'tasks.teams',
+        'tasks.assignee',
+        'tasks.milestone',
       ]);
 
       if (!project) {

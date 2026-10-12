@@ -19,6 +19,7 @@ import {
 import { Project } from 'src/projects/entities/project.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { Milestone } from 'src/milestone/entities/milestone.entity';
+import { User } from 'src/user/entities/user.entity';
 
 export enum TaskStatus {
   TODO = 'todo',
@@ -84,6 +85,13 @@ export class Task {
   })
   @JoinColumn({ name: 'milestone_id' })
   milestone?: Milestone;
+
+  @ManyToOne(() => User, (user) => user.assignedTasks, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'assignee_id' })
+  assignee?: User;
 
   @ManyToMany(() => Team, (team) => team.tasks)
   @JoinTable({
