@@ -150,6 +150,95 @@ export class TeamsHelper {
     });
   }
 
+  async findTeamsWithMembersByBusiness(businessId: number) {
+    const teams = await this.teamRepository
+      .createQueryBuilder('team')
+      .where('team.business_id = :businessId', { businessId })
+      .leftJoinAndSelect('team.leader', 'leader')
+      .leftJoinAndSelect('leader.role', 'leaderRole')
+      .leftJoinAndSelect('team.members', 'members')
+      .leftJoinAndSelect('members.user', 'user')
+      .leftJoinAndSelect('user.role', 'userRole')
+      .orderBy('team.name', 'ASC')
+      .getMany();
+
+    const allMembersMap = new Map<number, any>();
+
+    const sanitizedTeams = teams.map((team) => {
+      const leader = team.leader
+        ? {
+            user_id: team.leader.user_id,
+            name: team.leader.name,
+            email: team.leader.email,
+            role: team.leader.role?.name ?? null,
+          }
+        : null;
+
+      if (leader && !allMembersMap.has(leader.user_id)) {
+        allMembersMap.set(leader.user_id, {
+          ...leader,
+          teams: [{ id: team.id, name: team.name, is_leader: true }],
+        });
+      } else if (leader) {
+        const existing = allMembersMap.get(leader.user_id);
+        if (!existing.teams.some((t: any) => t.id === team.id)) {
+          existing.teams.push({
+            id: team.id,
+            name: team.name,
+            is_leader: true,
+          });
+        }
+      }
+
+      const members = (team.members || [])
+        .map((tm) => tm.user)
+        .filter((user) => Boolean(user))
+        .map((user) => {
+          const sanitized = {
+            user_id: user.user_id,
+            name: user.name,
+            email: user.email,
+            role: user.role?.name ?? null,
+          };
+
+          if (!allMembersMap.has(user.user_id)) {
+            allMembersMap.set(user.user_id, {
+              ...sanitized,
+              teams: [{ id: team.id, name: team.name, is_leader: false }],
+            });
+          } else {
+            const existing = allMembersMap.get(user.user_id);
+            if (!existing.teams.some((t: any) => t.id === team.id)) {
+              existing.teams.push({
+                id: team.id,
+                name: team.name,
+                is_leader: false,
+              });
+            }
+          }
+
+          return sanitized;
+        });
+
+      return {
+        id: team.id,
+        name: team.name,
+        description: team.description,
+        leader,
+        members,
+        member_count: members.length,
+      };
+    });
+
+    return {
+      business_id: businessId,
+      total_teams: sanitizedTeams.length,
+      total_members: allMembersMap.size,
+      teams: sanitizedTeams,
+      all_members: Array.from(allMembersMap.values()),
+    };
+  }
+
   async getTeamProgress(id: string) {
     const team = await this.teamRepository
       .createQueryBuilder('team')

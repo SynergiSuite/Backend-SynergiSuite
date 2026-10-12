@@ -3,6 +3,7 @@ import {
   Inject,
   forwardRef,
   InternalServerErrorException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
@@ -155,6 +156,42 @@ export class TeamsService {
       );
       throw new InternalServerErrorException(
         'An error occurred while fetching teams',
+      );
+    }
+  }
+
+  // Get all teams with leader and members for a business
+  async findTeamsWithMembersByBusiness(
+    businessId: number,
+    reqUser: { email: string },
+  ) {
+    this.logger.log(
+      `Initiating to get all teams with members for business: ${businessId} by user: ${reqUser.email}`,
+    );
+    try {
+      const user = await this.teamsHelper.getUserWithBusiness(reqUser.email);
+      if (user.business.business_id !== businessId) {
+        throw new ForbiddenException(
+          'User is not authorized to access teams of this business',
+        );
+      }
+
+      const result =
+        await this.teamsHelper.findTeamsWithMembersByBusiness(businessId);
+      this.logger.log(
+        `Returned ${result.teams.length} teams with members for business: ${businessId}`,
+      );
+      return { data: result };
+    } catch (error) {
+      this.logger.error(
+        `Error getting teams with members for business: ${businessId}`,
+        error.stack,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'An error occurred while fetching teams with members',
       );
     }
   }

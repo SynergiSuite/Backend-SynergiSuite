@@ -8,6 +8,7 @@ import {
   Req,
   Query,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { TeamsService } from './teams.service';
@@ -54,6 +55,32 @@ export class TeamsController {
   @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CheckHasBusiness)
   findAll(@Req() req: Request) {
     return this.teamsService.findAll(req.user as any);
+  }
+
+  // This gets all teams with leader and all members for a business
+  @Get('business/:business_id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CheckHasBusiness)
+  findTeamsWithMembers(
+    @Req() req: Request,
+    @Param('business_id', ParseIntPipe) businessId: number,
+  ) {
+    return this.teamsService.findTeamsWithMembersByBusiness(
+      businessId,
+      req.user as any,
+    );
+  }
+
+  // Alias endpoint for getting all teams with members by business
+  @Get('get-all-teams-with-members/:business_id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard, CheckHasBusiness)
+  findAllTeamsWithMembersAlias(
+    @Req() req: Request,
+    @Param('business_id', ParseIntPipe) businessId: number,
+  ) {
+    return this.teamsService.findTeamsWithMembersByBusiness(
+      businessId,
+      req.user as any,
+    );
   }
 
   // This will get team details
