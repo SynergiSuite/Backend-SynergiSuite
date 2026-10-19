@@ -129,3 +129,49 @@ export class editClientGuard implements CanActivate {
     return true;
   }
 }
+
+@Injectable()
+export class clientDetailGuard implements CanActivate {
+  private readonly logger = new Logger(clientDetailGuard.name);
+
+  constructor(private readonly clientsHelper: ClientsHelper) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
+    const id = request.params.id || request.params.clientId;
+
+    this.logger.log(`Checking if client exists for details: ${id}`);
+
+    if (!id) {
+      this.logger.error('Client ID is missing in request params.');
+      throw new BadRequestException('Client ID is required.');
+    }
+
+    const userDetails = await this.clientsHelper.getUserWithBusiness(
+      user.email,
+    );
+
+    try {
+      const client = await this.clientsHelper.findOneByBusiness(
+        id,
+        userDetails.business.business_id,
+      );
+
+      if (!client) {
+        this.logger.error(`Client does not exist for this business: ${id}`);
+        throw new BadRequestException('Client does not exist for this business.');
+      }
+
+      request.client = client;
+      request.businessId = userDetails.business.business_id;
+    } catch {
+      this.logger.error(`Client does not exist for this business: ${id}`);
+      throw new BadRequestException('Client does not exist for this business.');
+    }
+
+    this.logger.log(`Client exists for details: ${id}`);
+    return true;
+  }
+}
+

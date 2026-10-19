@@ -3,9 +3,11 @@ import { ClientsService } from './clients.service';
 import { ClientsController } from './clients.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Client } from './entities/client.entity';
+import { ClientFeedback } from '../client_feedback/entities/client-feedback.entity';
 import { UserModule } from 'src/user/user.module';
 import {
   checkClientBusiness,
+  clientDetailGuard,
   createClientGuard,
   editClientGuard,
   roleGuard,
@@ -17,7 +19,7 @@ import { ClientsHelper } from './clients.helper';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Client]),
+    TypeOrmModule.forFeature([Client, ClientFeedback]),
     UserModule,
     ActivityModule,
     EmailModule,
@@ -31,7 +33,9 @@ import { ClientsHelper } from './clients.helper';
     createClientGuard,
     checkClientBusiness,
     editClientGuard,
+    clientDetailGuard,
   ],
-  exports: [ClientsService],
+  exports: [ClientsService, ClientsHelper, clientDetailGuard],
 })
 export class ClientsModule {}
+

@@ -32,6 +32,7 @@ export class ClientFeedbackController {
   constructor(private readonly clientFeedbackService: ClientFeedbackService) {}
 
   @Post()
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   create(
     @Req() req: Request,
     @Body() createClientFeedbackDto: CreateClientFeedbackDto,
@@ -40,7 +41,12 @@ export class ClientFeedbackController {
   }
 
   @Post('submit')
-  @UseGuards(ValidClientFeedbackSubmissionGuard)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    ValidClientFeedbackSubmissionGuard,
+  )
   submitFeedback(
     @Req() req: Request,
     @Body() submitClientFeedbackDto: SubmitClientFeedbackDto,
@@ -52,12 +58,18 @@ export class ClientFeedbackController {
   }
 
   @Get()
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   findAll(@Req() req: Request, @Query() query: GetClientFeedbackDto) {
     return this.clientFeedbackService.findAll(query, req.user);
   }
 
   @Get('my-feedback')
-  @UseGuards(ClientHasOngoingProjectGuard)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    ClientHasOngoingProjectGuard,
+  )
   findClientFeedback(
     @Req() req: Request,
     @Query() query: GetClientFeedbackDto,
@@ -66,11 +78,13 @@ export class ClientFeedbackController {
   }
 
   @Get(':id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   findOne(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string) {
     return this.clientFeedbackService.findOne(id, req.user);
   }
 
   @Post(':id/replies')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   createReply(
     @Req() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
@@ -84,11 +98,13 @@ export class ClientFeedbackController {
   }
 
   @Get(':id/replies')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   findReplies(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string) {
     return this.clientFeedbackService.findReplies(id, req.user);
   }
 
   @Patch(':id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   update(
     @Req() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
@@ -102,6 +118,7 @@ export class ClientFeedbackController {
   }
 
   @Delete(':id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   remove(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string) {
     return this.clientFeedbackService.remove(id, req.user);
   }

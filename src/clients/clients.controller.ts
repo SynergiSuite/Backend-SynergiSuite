@@ -17,34 +17,74 @@ import {
   createClientGuard,
   checkClientBusiness,
   editClientGuard,
+  clientDetailGuard,
 } from './client.guard';
 import { Request } from 'express';
 import { JwtGuard } from '../shared/auth.guard';
 import { IsVerifiedGuard } from '../shared/isVerified.guard';
+import { FrontendSecretGuard } from '../shared/frontend-secret.guard';
 
 @Controller('clients')
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Post('add-client')
-  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard, createClientGuard)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    roleGuard,
+    createClientGuard,
+  )
   create(@Req() req: Request, @Body() createClientDto: CreateClientDto) {
     return this.clientsService.create(createClientDto, req.user);
   }
 
   @Get('get-all-clients')
-  @UseGuards(JwtGuard, IsVerifiedGuard, checkClientBusiness)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    checkClientBusiness,
+  )
   findAll(@Req() req: Request) {
     return this.clientsService.findAll(req.user);
   }
 
+  @Get([
+    'get-client-details/:id',
+    'get-client-detail/:id',
+    'client-details/:id',
+    'client-detail/:id',
+    'details/:id',
+  ])
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    clientDetailGuard,
+  )
+  getClientDetails(
+    @Req() req: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.clientsService.getClientDetails(id, req.user);
+  }
+
   @Get(':id')
+  @UseGuards(FrontendSecretGuard)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.clientsService.findOne(id);
   }
 
   @Post('edit-client/:id')
-  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard, editClientGuard)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    roleGuard,
+    editClientGuard,
+  )
   update(
     @Req() req: Request,
     @Param('id', ParseUUIDPipe) id: string,
@@ -54,8 +94,15 @@ export class ClientsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtGuard, IsVerifiedGuard, roleGuard, editClientGuard)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    roleGuard,
+    editClientGuard,
+  )
   remove(@Req() req: Request, @Param('id', ParseUUIDPipe) id: string) {
     return this.clientsService.remove(id, req.user);
   }
 }
+

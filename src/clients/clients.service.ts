@@ -99,6 +99,29 @@ export class ClientsService {
     return await this.clientsHelper.findOne(id);
   }
 
+  async getClientDetails(id: string, obj: any) {
+    this.logger.log(
+      `Initiating request to fetch client details for ID: ${id} by user: ${obj?.email}`,
+    );
+    try {
+      const user = await this.clientsHelper.getUserWithBusiness(obj.email);
+      const businessId = user.business.business_id;
+
+      return await this.clientsHelper.getClientDetailsWithRelations(
+        id,
+        businessId,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error fetching client details for ID: ${id}: ${error.message}`,
+        error.stack,
+      );
+      throw error instanceof NotFoundException
+        ? error
+        : new BadRequestException(error.message);
+    }
+  }
+
   async update(
     id: string,
     updateClientDto: UpdateClientDto,
