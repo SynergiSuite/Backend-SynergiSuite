@@ -303,4 +303,53 @@ describe('ClientsModule - Client Details & Guards', () => {
       expect(res).toBe(mockResult);
     });
   });
+
+  describe('RedisService - Client Invitation Token', () => {
+    let redisService: any;
+    let mockClient: any;
+
+    beforeEach(() => {
+      mockClient = {
+        set: jest.fn().mockResolvedValue('OK'),
+        get: jest.fn(),
+        del: jest.fn(),
+        connect: jest.fn().mockResolvedValue(undefined),
+      };
+      redisService = {
+        redisClient: mockClient,
+        logger: { log: jest.fn() },
+        setWithExpiration: jest.fn(async (key, value, ttl) => {
+          await mockClient.set(key, value, { EX: ttl });
+        }),
+      };
+      // Bind generateTokenForClientInvitation
+      const originalProto = require('../redis/redis.service').RedisService.prototype;
+      redisService.generateTokenForClientInvitation =
+        originalProto.generateTokenForClientInvitation.bind(redisService);
+    });
+
+    it('should store role id as number and role object with role id instead of plain string', async () => {
+      const token = await redisService.generateTokenForClientInvitation(
+        'ali.kashan@mailinator.com',
+        'founder.v2@mailinator.com',
+        '2514029c-ba3f-4bf2-a183-c4ed094d5cc3',
+        4,
+        { id: 5, name: 'Client' },
+      );
+
+      expect(typeof token).toBe('string');
+      expect(redisService.setWithExpiration).toHaveBeenCalled();
+      const savedPayload = JSON.parse(
+        redisService.setWithExpiration.mock.calls[0][1],
+      );
+
+      expect(savedPayload.invited).toBe('ali.kashan@mailinator.com');
+      expect(savedPayload.invited_by).toBe('founder.v2@mailinator.com');
+      expect(savedPayload.invited_as).toBe(5);
+      expect(savedPayload.invited_as_role).toEqual({ id: 5, name: 'Client' });
+      expect(savedPayload.client_id).toBe('2514029c-ba3f-4bf2-a183-c4ed094d5cc3');
+      expect(savedPayload.business_id).toBe(4);
+    });
+  });
 });
+

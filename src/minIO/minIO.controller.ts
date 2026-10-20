@@ -11,6 +11,7 @@ import {
 import { MinIO } from './minIO.service';
 import { JwtGuard } from 'src/shared/auth.guard';
 import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
+import { FrontendSecretGuard } from 'src/shared/frontend-secret.guard';
 import { DocumentAccessGuard } from 'src/documents/document.guard';
 
 @Controller('resources')
@@ -20,6 +21,7 @@ export class ResourceController {
   constructor(private readonly minioService: MinIO) {}
 
   @Post('upload-url')
+  @UseGuards(FrontendSecretGuard)
   async getUploadUrl(
     @Body() body: { fileName: string; mimeType: string; bucket?: string },
   ) {
@@ -34,7 +36,7 @@ export class ResourceController {
   }
 
   @Post('chat/upload-url')
-  @UseGuards(JwtGuard, IsVerifiedGuard)
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   async getChatUploadUrl(@Body() body: { fileName: string; mimeType: string }) {
     this.logger.log(
       `Received request to generate chat upload URL for file: ${body.fileName}`,
@@ -47,7 +49,12 @@ export class ResourceController {
   }
 
   @Get(':id/view-url')
-  @UseGuards(JwtGuard, IsVerifiedGuard, DocumentAccessGuard)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    DocumentAccessGuard,
+  )
   async getViewUrl(@Param('id') id: string, @Req() req: any) {
     this.logger.log(
       `Received request to generate view URL for document ID: ${id}`,

@@ -15,6 +15,7 @@ import {
 import { ActivityModule } from 'src/activity/activity.module';
 import { EmailModule } from 'src/mailer/email.module';
 import { RedisModule } from 'src/redis/redis.module';
+import { RolesModule } from '../roles/roles.module';
 import { ClientsHelper } from './clients.helper';
 
 @Module({
@@ -24,6 +25,7 @@ import { ClientsHelper } from './clients.helper';
     ActivityModule,
     EmailModule,
     RedisModule,
+    RolesModule,
   ],
   controllers: [ClientsController],
   providers: [

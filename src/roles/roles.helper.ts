@@ -62,6 +62,44 @@ export class RolesHelper {
       .getOne();
   }
 
+  async findClientRoleForBusiness(businessId: number): Promise<Role | null> {
+    let role = await this.roleRepository
+      .createQueryBuilder('role')
+      .leftJoinAndSelect('role.business', 'business')
+      .leftJoinAndSelect('role.primary_role', 'primaryRole')
+      .where('business.business_id = :businessId', { businessId })
+      .andWhere(
+        '(LOWER(role.name) = :roleName OR LOWER(primaryRole.name) = :primaryRoleName)',
+        {
+          roleName: 'client',
+          primaryRoleName: 'client',
+        },
+      )
+      .getOne();
+
+    if (!role) {
+      let clientPrimaryRole = await this.findPrimaryRoleByName('client');
+      if (!clientPrimaryRole) {
+        clientPrimaryRole = await this.savePrimaryRole(
+          this.createPrimaryRole('client'),
+        );
+      }
+      const business = await this.roleRepository.manager.findOne(Business, {
+        where: { business_id: businessId },
+      });
+      if (business) {
+        const newRole = this.createBusinessRole(
+          'Client',
+          business,
+          clientPrimaryRole,
+        );
+        role = await this.saveRoles([newRole]).then((r) => r[0]);
+      }
+    }
+
+    return role;
+  }
+
   createBusinessRole(
     name: string,
     business: Business,

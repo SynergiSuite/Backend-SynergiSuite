@@ -132,14 +132,36 @@ export class BusinessHelper {
           Number(data.invited_as),
           business.business_id,
         );
-      } else {
-        const parsed = await this.roleService.findOneByBusiness(
-          String(data.invited_as).toLowerCase(),
+      } else if (
+        typeof data.invited_as === 'object' &&
+        data.invited_as?.id
+      ) {
+        role = await this.roleService.findOneForBusiness(
+          Number(data.invited_as.id),
           business.business_id,
         );
-        role = parsed?.role
-          ? await this.roleService.findOne(parsed.role.id)
-          : null;
+      } else if (
+        typeof data.invited_as_role === 'object' &&
+        data.invited_as_role?.id
+      ) {
+        role = await this.roleService.findOneForBusiness(
+          Number(data.invited_as_role.id),
+          business.business_id,
+        );
+      } else {
+        const roleName = String(
+          data.invited_as || data.invited_as_role || '',
+        ).trim();
+        if (roleName.toLowerCase() === 'client') {
+          role = await this.roleService.findClientRoleForBusiness(
+            business.business_id,
+          );
+        } else {
+          role = await this.roleService.findRoleByNameForBusiness(
+            roleName,
+            business.business_id,
+          );
+        }
       }
       if (!role) throw new NotFoundException(`Role not found for business.`);
       const updatedUser = await this.userHelper.setInvitedUser(

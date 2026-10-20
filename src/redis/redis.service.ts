@@ -99,18 +99,31 @@ export class RedisService {
     invitedBy: string,
     clientId: string,
     businessId: number,
+    role?: { id: number; name?: string } | number,
   ) {
     this.logger.log(
       `[ClientInvite] Redis invitation token generation started | clientEmail=${invited} | invitedBy=${invitedBy} | clientId=${clientId}`,
     );
     const token = await crypto.randomBytes(16).toString('hex');
     const ttl = 3600;
+
+    const roleId = typeof role === 'number' ? role : role?.id;
+    const roleName =
+      typeof role === 'object' && role?.name ? role.name : 'Client';
+
     const obj = {
       invitation_type: 'client',
       invited,
       invited_by: invitedBy,
-      invited_as: 'client',
-      invited_as_role: 'client',
+      invited_as: roleId ?? 'Client',
+      invited_as_role: roleId
+        ? {
+            id: roleId,
+            name: roleName,
+          }
+        : {
+            name: 'Client',
+          },
       client_id: clientId,
       business_id: businessId,
     };
@@ -118,7 +131,7 @@ export class RedisService {
     const jsonObj = JSON.stringify(obj);
     await this.setWithExpiration(token, jsonObj, ttl);
     this.logger.log(
-      `[ClientInvite] Redis invitation token stored | clientEmail=${invited} | ttl=${ttl} | tokenLength=${token.length}`,
+      `[ClientInvite] Redis invitation token stored | clientEmail=${invited} | roleId=${roleId} | ttl=${ttl} | tokenLength=${token.length}`,
     );
     return token;
   }

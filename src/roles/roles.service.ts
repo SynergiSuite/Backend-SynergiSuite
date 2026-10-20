@@ -171,6 +171,14 @@ export class RolesService {
     return this.rolesHelper.findPrimaryRoles();
   }
 
+  async findClientRoleForBusiness(businessId: number) {
+    return this.rolesHelper.findClientRoleForBusiness(businessId);
+  }
+
+  async findRoleByNameForBusiness(name: string, businessId: number) {
+    return this.rolesHelper.findRoleByNameForBusiness(name, businessId);
+  }
+
   async update(id: number, updateRoleDto: UpdateRoleDto, userDetails: any) {
     const businessId = userDetails.business.business_id;
     const role = await this.findOneForBusiness(id, businessId);

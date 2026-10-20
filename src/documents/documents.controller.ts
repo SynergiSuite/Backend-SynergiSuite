@@ -15,17 +15,18 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { JwtGuard } from 'src/shared/auth.guard';
 import { IsVerifiedGuard } from 'src/shared/isVerified.guard';
+import { FrontendSecretGuard } from 'src/shared/frontend-secret.guard';
 import { DocumentDeleteGuard } from './document.guard';
 import { Request } from 'express';
 
 @Controller('documents')
-@UseGuards(JwtGuard, IsVerifiedGuard)
 export class DocumentsController {
   private readonly logger = new Logger(DocumentsController.name);
 
   constructor(private readonly documentsService: DocumentsService) {}
 
   @Post()
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   create(@Req() req: Request, @Body() createDocumentDto: CreateDocumentDto) {
     this.logger.log(
       `Received request to create document: ${createDocumentDto.name}`,
@@ -34,12 +35,14 @@ export class DocumentsController {
   }
 
   @Get()
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   findAll(@Req() req: Request) {
     this.logger.log(`Received request to get all documents for user`);
     return this.documentsService.findAll(req.user);
   }
 
   @Patch(':id')
+  @UseGuards(FrontendSecretGuard, JwtGuard, IsVerifiedGuard)
   update(
     @Req() req: Request,
     @Param('id') id: string,
@@ -50,7 +53,12 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  @UseGuards(DocumentDeleteGuard)
+  @UseGuards(
+    FrontendSecretGuard,
+    JwtGuard,
+    IsVerifiedGuard,
+    DocumentDeleteGuard,
+  )
   remove(@Req() req: Request, @Param('id') id: string) {
     this.logger.log(`Received request to delete document ID: ${id}`);
     return this.documentsService.remove(req.user, +id);

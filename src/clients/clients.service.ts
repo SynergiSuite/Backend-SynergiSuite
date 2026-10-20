@@ -11,6 +11,7 @@ import { ActivityService } from 'src/activity/activity.service';
 import { ActivityAction } from 'src/activity/entities/activity-log.entity';
 import { EmailService } from 'src/mailer/email.service';
 import { RedisService } from 'src/redis/redis.service';
+import { RolesService } from '../roles/roles.service';
 import { ClientsHelper } from './clients.helper';
 
 @Injectable()
@@ -22,6 +23,7 @@ export class ClientsService {
     private readonly activityService: ActivityService,
     private readonly emailService: EmailService,
     private readonly redisService: RedisService,
+    private readonly rolesService: RolesService,
   ) {}
 
   // This function registers a new client
@@ -274,11 +276,18 @@ export class ClientsService {
       `[ClientInvite] Preparing invitation email | clientId=${client.id} | email=${client.email}`,
     );
 
+    const clientRole = await this.rolesService.findClientRoleForBusiness(
+      user.business.business_id,
+    );
+
     const token = await this.redisService.generateTokenForClientInvitation(
       client.email,
       user.email,
       client.id,
       user.business.business_id,
+      clientRole
+        ? { id: clientRole.id, name: clientRole.name }
+        : undefined,
     );
 
     const emailSent = await this.emailService.sendInvitationEmail(
