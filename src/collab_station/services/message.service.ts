@@ -3,11 +3,17 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  OnModuleInit,
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
-import { Message } from '../entities/message.entity';
+import { Repository, LessThan, In } from 'typeorm';
+import {
+  Message,
+  MessageType,
+  SharedEntitySnapshot,
+  SharedEntityType,
+} from '../entities/message.entity';
 import { GroupMember } from '../entities/group-member.entity';
 import { SendMessageDto } from '../dto/send-message.dto';
 import {
@@ -22,7 +28,7 @@ import { NotificationType } from '../../notifications/entities/notification.enti
 const ALLOWED_PATH_PREFIXES = ['hr-documents/', 'chat-attachments/'];
 
 @Injectable()
-export class MessageService {
+export class MessageService implements OnModuleInit {
   private readonly logger = new Logger(MessageService.name);
 
   constructor(
@@ -34,6 +40,73 @@ export class MessageService {
     @Optional()
     private readonly notificationsService?: NotificationsService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureSharedItemSchema();
+  }
+
+  /**
+   * SQL migrations in this repository are not registered with TypeORM's
+   * migration runner. Keep chat usable after an application deployment by
+   * applying the shared-item schema idempotently before the gateway accepts
+   * connections. The checked-in migration remains the source of truth for
+   * environments that run SQL migrations explicitly.
+   */
+  async ensureSharedItemSchema(): Promise<void> {
+    try {
+      await this.messageRepository.manager.transaction(async (manager) => {
+        const [messageTypeColumn] = await manager.query(`
+          SELECT udt_name
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'messages'
+            AND column_name = 'type'
+        `);
+        const messageTypeEnum = messageTypeColumn?.udt_name;
+        if (
+          !messageTypeEnum ||
+          !/^[A-Za-z_][A-Za-z0-9_]*$/.test(messageTypeEnum)
+        ) {
+          throw new Error('Unable to resolve the messages type enum');
+        }
+
+        await manager.query(
+          `ALTER TYPE "${messageTypeEnum}" ADD VALUE IF NOT EXISTS 'shared_item'`,
+        );
+        await manager.query(`
+          DO $$ BEGIN
+            CREATE TYPE messages_shared_entity_type_enum AS ENUM (
+              'task',
+              'milestone',
+              'client_feedback'
+            );
+          EXCEPTION
+            WHEN duplicate_object THEN null;
+          END $$
+        `);
+        await manager.query(`
+          ALTER TABLE "messages"
+            ADD COLUMN IF NOT EXISTS "sharedEntityType" messages_shared_entity_type_enum,
+            ADD COLUMN IF NOT EXISTS "sharedEntityId" uuid,
+            ADD COLUMN IF NOT EXISTS "sharedEntitySnapshot" jsonb
+        `);
+        await manager.query(`
+          ALTER TABLE "messages" ALTER COLUMN "text" DROP NOT NULL
+        `);
+        await manager.query(`
+          CREATE INDEX IF NOT EXISTS "IDX_messages_shared_entity"
+            ON "messages" ("sharedEntityType", "sharedEntityId")
+        `);
+      });
+      this.logger.log('Shared-item message schema verified.');
+    } catch (error) {
+      this.logger.error(
+        'Failed to initialize the shared-item message schema',
+        error.stack ?? error.message,
+      );
+      throw error;
+    }
+  }
 
   // Validate that a fileUrl is a safe MinIO object path
   private validateObjectPath(fileUrl: string): void {
@@ -155,6 +228,32 @@ export class MessageService {
     }
   }
 
+  async saveSharedItem(
+    groupId: string,
+    senderId: number,
+    input: {
+      entityType: SharedEntityType;
+      entityId: string;
+      snapshot: SharedEntitySnapshot;
+      text?: string;
+    },
+  ): Promise<Message> {
+    const message = this.messageRepository.create({
+      groupId,
+      senderId,
+      text: input.text?.trim() || null,
+      type: MessageType.SHARED_ITEM,
+      sharedEntityType: input.entityType,
+      sharedEntityId: input.entityId,
+      sharedEntitySnapshot: input.snapshot,
+    });
+    const saved = await this.messageRepository.save(message);
+    return this.messageRepository.findOne({
+      where: { id: saved.id },
+      relations: ['sender', 'replyTo'],
+    });
+  }
+
   async notifyRecipients(message: Message): Promise<void> {
     if (!this.notificationsService) {
       return;
@@ -176,7 +275,9 @@ export class MessageService {
     const groupName = memberships[0]?.group?.name;
     const preview = message.text?.trim()
       ? message.text.trim().slice(0, 160)
-      : `Sent ${message.fileName || 'an attachment'}`;
+      : message.type === MessageType.SHARED_ITEM
+        ? `Shared ${message.sharedEntitySnapshot?.title || 'an item'}`
+        : `Sent ${message.fileName || 'an attachment'}`;
 
     await this.notificationsService.createMany(
       recipients.map((membership) => ({
@@ -199,6 +300,8 @@ export class MessageService {
     groupId: string,
     limit: number = 50,
     cursor?: string,
+    sharedEntityType?: SharedEntityType,
+    sharedEntityId?: string,
   ): Promise<MessageResponseDto[]> {
     this.logger.log(
       `Finding messages for group: ${groupId}, limit: ${limit}, cursor: ${cursor}`,
@@ -209,9 +312,29 @@ export class MessageService {
       if (cursor) {
         whereCondition.createdAt = LessThan(new Date(cursor));
       }
+      if (sharedEntityType) whereCondition.sharedEntityType = sharedEntityType;
+      if (sharedEntityId) whereCondition.sharedEntityId = sharedEntityId;
+
+      let where: any = whereCondition;
+      if (sharedEntityType || sharedEntityId) {
+        const roots = await this.messageRepository.find({
+          where: whereCondition,
+          select: ['id'],
+        });
+        if (roots.length) {
+          const replyCondition: any = {
+            groupId,
+            replyToId: In(roots.map((root) => root.id)),
+          };
+          if (cursor) {
+            replyCondition.createdAt = LessThan(new Date(cursor));
+          }
+          where = [whereCondition, replyCondition];
+        }
+      }
 
       const messages = await this.messageRepository.find({
-        where: whereCondition,
+        where,
         relations: ['sender', 'replyTo'],
         order: { createdAt: 'ASC' },
         take: limit,

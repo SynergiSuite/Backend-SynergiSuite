@@ -15,6 +15,9 @@ describe('MessageService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     softRemove: jest.fn(),
+    manager: {
+      transaction: jest.fn(),
+    },
   };
 
   const mockGroupMemberRepository = {
@@ -45,6 +48,25 @@ describe('MessageService', () => {
     deletedAt: null,
     group: null,
     ...overrides,
+  });
+
+  describe('ensureSharedItemSchema', () => {
+    it('adds the shared-item schema idempotently at startup', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce([{ udt_name: 'message_type_enum' }])
+        .mockResolvedValue([]);
+      mockMessageRepository.manager.transaction.mockImplementation(
+        async (callback) => callback({ query }),
+      );
+
+      await service.ensureSharedItemSchema();
+
+      expect(query).toHaveBeenCalledWith(
+        `ALTER TYPE "message_type_enum" ADD VALUE IF NOT EXISTS 'shared_item'`,
+      );
+      expect(query).toHaveBeenCalledTimes(6);
+    });
   });
 
   beforeEach(async () => {

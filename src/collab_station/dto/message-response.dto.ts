@@ -1,4 +1,8 @@
-import { Message } from '../entities/message.entity';
+import {
+  Message,
+  SharedEntitySnapshot,
+  SharedEntityType,
+} from '../entities/message.entity';
 
 export interface MessageResponseDto {
   id: string;
@@ -11,6 +15,9 @@ export interface MessageResponseDto {
   } | null;
   text: string;
   type: string;
+  sharedEntityType?: SharedEntityType;
+  sharedEntityId?: string;
+  sharedEntitySnapshot?: SharedEntitySnapshot;
   fileUrl?: string;
   fileName?: string;
   mimeType?: string;
@@ -37,6 +44,9 @@ export function toMessageResponseDto(
       : null,
     text: message.text,
     type: message.type,
+    sharedEntityType: message.sharedEntityType || undefined,
+    sharedEntityId: message.sharedEntityId || undefined,
+    sharedEntitySnapshot: message.sharedEntitySnapshot || undefined,
     fileUrl: signedFileUrl || undefined,
     fileName: message.fileName || undefined,
     mimeType: message.mimeType || undefined,

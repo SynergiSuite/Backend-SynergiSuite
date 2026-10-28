@@ -8,7 +8,7 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { MessageService } from '../services/message.service';
 import { GroupService } from '../services/group.service';
@@ -17,6 +17,8 @@ import { NotificationsService } from '../../notifications/notifications.service'
 import { PresenceService } from '../../realtime/presence.service';
 import { RealtimeDeliveryService } from '../../realtime/realtime-delivery.service';
 import { SocketAuthService } from '../../realtime/socket-auth.service';
+import { SharedItemService } from '../services/shared-item.service';
+import { ShareMessageDto } from '../dto/share-message.dto';
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -39,6 +41,7 @@ export class ChatGateway
     private readonly presenceService: PresenceService,
     private readonly realtimeDelivery: RealtimeDeliveryService,
     private readonly socketAuthService: SocketAuthService,
+    private readonly sharedItemService: SharedItemService,
   ) {}
 
   afterInit(server: Server) {
@@ -52,6 +55,66 @@ export class ChatGateway
         );
       },
     );
+  }
+
+  @SubscribeMessage('message:share')
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  )
+  async handleShareMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: ShareMessageDto,
+  ) {
+    const user = client.data.user;
+    if (!user) {
+      client.emit('error', { message: 'Authentication required' });
+      return;
+    }
+
+    try {
+      const resolved = await this.sharedItemService.resolveSharedEntity(
+        payload.entityType,
+        payload.entityId,
+        user.user_id,
+      );
+      await this.sharedItemService.authorizeDestination(
+        payload.groupId,
+        user.user_id,
+        resolved,
+      );
+
+      const message = await this.messageService.saveSharedItem(
+        payload.groupId,
+        user.user_id,
+        {
+          entityType: payload.entityType,
+          entityId: payload.entityId,
+          snapshot: resolved.snapshot,
+          text: payload.text,
+        },
+      );
+      const responseDto = await this.messageService.toResponseDto(message);
+      this.server.to(payload.groupId).emit('message:received', responseDto);
+      this.messageService.notifyRecipients(message).catch((error) => {
+        this.logger.error(
+          `Shared-item notification creation failed for ${message.id}`,
+          error.stack ?? error.message,
+        );
+      });
+      return responseDto;
+    } catch (error) {
+      this.logger.error(
+        `Error sharing ${payload.entityType}:${payload.entityId}`,
+        error.stack ?? error.message,
+      );
+      client.emit('error', {
+        message: error.message || 'Failed to share item',
+        status: error.status,
+      });
+    }
   }
 
   // Authenticate user on connection and auto-join all group rooms

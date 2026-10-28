@@ -18,9 +18,26 @@ export enum MessageType {
   IMAGE = 'image',
   FILE = 'file',
   SYSTEM = 'system',
+  SHARED_ITEM = 'shared_item',
+}
+
+export enum SharedEntityType {
+  TASK = 'task',
+  MILESTONE = 'milestone',
+  CLIENT_FEEDBACK = 'client_feedback',
+}
+
+export interface SharedEntitySnapshot extends Record<string, unknown> {
+  title: string;
+  projectId: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+  targetType?: string;
 }
 
 @Entity({ name: 'messages' })
+@Index('IDX_messages_shared_entity', ['sharedEntityType', 'sharedEntityId'])
 export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -45,6 +62,15 @@ export class Message {
 
   @Column({ type: 'enum', enum: MessageType, default: MessageType.TEXT })
   type: MessageType;
+
+  @Column({ type: 'enum', enum: SharedEntityType, nullable: true })
+  sharedEntityType?: SharedEntityType;
+
+  @Column({ type: 'uuid', nullable: true })
+  sharedEntityId?: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  sharedEntitySnapshot?: SharedEntitySnapshot;
 
   @Column({ nullable: true })
   fileUrl: string;

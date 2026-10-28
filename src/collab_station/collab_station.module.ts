@@ -27,6 +27,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MediaModule } from '../media/media.module';
 import { CollabStationHelper } from './collab_station.helper';
+import { SharedItemService } from './services/shared-item.service';
+import { Task } from '../projects/entities/task.entity';
+import { Project } from '../projects/entities/project.entity';
+import { Milestone } from '../milestone/entities/milestone.entity';
+import { ClientFeedback } from '../client_feedback/entities/client-feedback.entity';
+import { User } from '../user/entities/user.entity';
 
 @Module({
   imports: [
@@ -37,6 +43,11 @@ import { CollabStationHelper } from './collab_station.helper';
       Call,
       Meeting,
       MeetingParticipant,
+      Task,
+      Project,
+      Milestone,
+      ClientFeedback,
+      User,
     ]),
     UserModule,
     forwardRef(() => MinIOModule),
@@ -53,6 +64,7 @@ import { CollabStationHelper } from './collab_station.helper';
   providers: [
     GroupService,
     MessageService,
+    SharedItemService,
     CallService,
     MeetingService,
     CollabStationHelper,

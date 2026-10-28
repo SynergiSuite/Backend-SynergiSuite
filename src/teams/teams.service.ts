@@ -281,6 +281,25 @@ export class TeamsService {
         updateTeamDto,
       );
 
+      const previousIds = new Set(before.memberIds);
+      const nextIds = new Set(memberIds);
+      const addedIds = memberIds.filter((id) => !previousIds.has(id));
+      const removedIds = before.memberIds.filter((id) => !nextIds.has(id));
+      for (const userId of addedIds) {
+        await this.groupService.addMemberByTeamId(savedTeam.id, userId);
+        await this.groupService.addMemberToProjectGroupsForTeam(
+          savedTeam.id,
+          userId,
+        );
+      }
+      for (const userId of removedIds) {
+        await this.groupService.removeMemberByTeamId(savedTeam.id, userId);
+        await this.groupService.removeMemberFromProjectGroupsForTeam(
+          savedTeam.id,
+          userId,
+        );
+      }
+
       const after = {
         name: savedTeam.name,
         description: savedTeam.description,
@@ -396,6 +415,10 @@ export class TeamsService {
 
         // Sync to collab_station group
         await this.groupService.addMemberByTeamId(team.id, memberId);
+        await this.groupService.addMemberToProjectGroupsForTeam(
+          team.id,
+          memberId,
+        );
       }
     }
     return true;

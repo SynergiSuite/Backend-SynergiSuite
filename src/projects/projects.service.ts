@@ -228,7 +228,13 @@ export class ProjectsService implements OnModuleInit {
       // Project/business validation handled by guards.
       const project = await this.projectsHelper.findProject(
         createTaskDto.projectId,
-        ['business', 'teams', 'teams.members', 'teams.members.user', 'teams.leader'],
+        [
+          'business',
+          'teams',
+          'teams.members',
+          'teams.members.user',
+          'teams.leader',
+        ],
       );
 
       const milestone = createTaskDto.milestoneId
@@ -249,7 +255,10 @@ export class ProjectsService implements OnModuleInit {
       if (numericAssigneeId) {
         assigneeUser = await this.userHelper.findOne(numericAssigneeId);
         if (!assigneeUser) {
-          throw new HttpException('Assignee user not found', HttpStatus.BAD_REQUEST);
+          throw new HttpException(
+            'Assignee user not found',
+            HttpStatus.BAD_REQUEST,
+          );
         }
       }
 
@@ -457,9 +466,7 @@ export class ProjectsService implements OnModuleInit {
         if (assigneeUser && team) {
           const isMember =
             team.leader?.user_id === assigneeUser.user_id ||
-            team.members?.some(
-              (m) => m.user?.user_id === assigneeUser.user_id,
-            );
+            team.members?.some((m) => m.user?.user_id === assigneeUser.user_id);
           if (!isMember) {
             throw new HttpException(
               `Assigned employee is not a member of team "${team.name}"`,
@@ -595,6 +602,12 @@ export class ProjectsService implements OnModuleInit {
         throw new HttpException('Project not found', HttpStatus.NOT_FOUND);
       }
 
+      const previousTeamIds = project.teams.map((team) => team.id);
+      const previousMembers = new Map<string, number[]>();
+      for (const teamId of previousTeamIds) {
+        previousMembers.set(teamId, await this.getTeamUserIds(teamId));
+      }
+
       const teams = await this.teamService.findTeams(updateTeamDto.team_id);
       if (teams.length !== updateTeamDto.team_id.length) {
         throw new HttpException(
@@ -605,6 +618,23 @@ export class ProjectsService implements OnModuleInit {
 
       project.teams = teams;
       const result = await this.projectsHelper.saveProject(project);
+      const nextTeamIds = new Set(teams.map((team) => team.id));
+      const previousTeamIdSet = new Set(previousTeamIds);
+      for (const team of teams.filter(
+        (item) => !previousTeamIdSet.has(item.id),
+      )) {
+        for (const userId of await this.getTeamUserIds(team.id)) {
+          await this.groupService.addMemberByProjectId(project.id, userId);
+        }
+      }
+      for (const teamId of previousTeamIds.filter(
+        (id) => !nextTeamIds.has(id),
+      )) {
+        for (const userId of previousMembers.get(teamId) ?? []) {
+          await this.groupService.removeMemberByProjectId(project.id, userId);
+        }
+      }
+      await this.groupService.syncProjectGroupMembers(project.id);
       this.logger.log(`Project teams updated successfully.`);
 
       return {
@@ -869,5 +899,20 @@ export class ProjectsService implements OnModuleInit {
     if (!teamIds || teamIds.length === 0) return [];
 
     return this.projectsHelper.findProjectsByTeams(teamIds);
+  }
+
+  private async getTeamUserIds(teamId: string): Promise<number[]> {
+    const [team, memberships] = await Promise.all([
+      this.teamService.findOne(teamId),
+      this.teamService.findTeamMember(teamId),
+    ]);
+    return [
+      ...new Set(
+        [
+          team.leader?.user_id,
+          ...memberships.map((membership) => membership.user.user_id),
+        ].filter((userId): userId is number => Boolean(userId)),
+      ),
+    ];
   }
 }

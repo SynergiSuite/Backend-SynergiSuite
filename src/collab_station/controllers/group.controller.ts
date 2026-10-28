@@ -22,6 +22,7 @@ import { CreateGroupDto } from '../dto/create-group.dto';
 import { UpdateGroupDto } from '../dto/update-group.dto';
 import { AddMemberDto } from '../dto/add-member.dto';
 import { CollabStationHelper } from '../collab_station.helper';
+import { SharedEntityType } from '../entities/message.entity';
 
 @Controller('collab-station')
 export class GroupController {
@@ -81,6 +82,22 @@ export class GroupController {
     );
     return this.groupService.findOneForUser(
       groupId,
+      user.user_id,
+      user.business.business_id,
+    );
+  }
+
+  @Get('groups/project/:projectId')
+  @UseGuards(JwtGuard, IsVerifiedGuard)
+  async findProjectGroup(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+  ) {
+    const user = await this.collabStationHelper.getUserWithBusiness(
+      (req.user as any).email,
+    );
+    return this.groupService.findProjectGroupForUser(
+      projectId,
       user.user_id,
       user.business.business_id,
     );
@@ -177,11 +194,15 @@ export class GroupController {
     @Param('groupId') groupId: string,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
+    @Query('sharedEntityType') sharedEntityType?: SharedEntityType,
+    @Query('sharedEntityId') sharedEntityId?: string,
   ) {
     return this.messageService.findByGroup(
       groupId,
       limit ? parseInt(limit) : 50,
       cursor,
+      sharedEntityType,
+      sharedEntityId,
     );
   }
 }

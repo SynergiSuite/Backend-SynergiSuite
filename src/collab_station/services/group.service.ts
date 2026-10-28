@@ -16,6 +16,9 @@ import { toCallResponseDto } from '../dto/call.dto';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { NotificationType } from '../../notifications/entities/notification.entity';
 import { CollabStationHelper } from '../collab_station.helper';
+import { Project } from '../../projects/entities/project.entity';
+import { User } from '../../user/entities/user.entity';
+import { getAccessRoleName } from '../../roles/role-access';
 
 @Injectable()
 export class GroupService {
@@ -28,6 +31,10 @@ export class GroupService {
     private readonly groupMemberRepository: Repository<GroupMember>,
     @InjectRepository(Call)
     private readonly callRepository: Repository<Call>,
+    @InjectRepository(Project)
+    private readonly projectRepository: Repository<Project>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly collabStationHelper: CollabStationHelper,
     @Optional()
     private readonly notificationsService?: NotificationsService,
@@ -328,6 +335,56 @@ export class GroupService {
       throw new HttpException('Group not found', HttpStatus.NOT_FOUND);
     }
 
+    return group;
+  }
+
+  async findProjectGroupForUser(
+    projectId: string,
+    userId: number,
+    businessId: number,
+  ) {
+    const [project, user] = await Promise.all([
+      this.projectRepository.findOne({
+        where: { id: projectId },
+        relations: [
+          'business',
+          'client',
+          'teams',
+          'teams.leader',
+          'teams.members',
+          'teams.members.user',
+        ],
+      }),
+      this.userRepository.findOne({
+        where: { user_id: userId },
+        relations: ['business', 'role', 'role.primary_role'],
+      }),
+    ]);
+
+    if (
+      !project ||
+      !user ||
+      project.business?.business_id !== businessId ||
+      user.business?.business_id !== businessId ||
+      !this.userCanViewProject(user, project)
+    ) {
+      throw new HttpException('Project group not found', HttpStatus.NOT_FOUND);
+    }
+
+    await this.syncProjectGroupMembers(projectId);
+    const group = await this.groupRepository.findOne({
+      where: { projectId, type: GroupType.PROJECT },
+      relations: ['members', 'members.user', 'project'],
+    });
+    if (!group) {
+      throw new HttpException('Project group not found', HttpStatus.NOT_FOUND);
+    }
+    const membership = await this.groupMemberRepository.findOne({
+      where: { groupId: group.id, userId },
+    });
+    if (!membership) {
+      throw new HttpException('Project group not found', HttpStatus.NOT_FOUND);
+    }
     return group;
   }
 
@@ -793,12 +850,7 @@ export class GroupService {
         return;
       }
 
-      const member = await this.groupMemberRepository.findOne({
-        where: { userId, groupId: group.id },
-      });
-      if (!member) return;
-
-      await this.groupMemberRepository.remove(member);
+      await this.syncProjectGroupMembers(projectId);
       this.logger.log(
         `Member ${userId} removed from project group successfully`,
       );
@@ -808,6 +860,78 @@ export class GroupService {
         error.message,
       );
     }
+  }
+
+  async addMemberToProjectGroupsForTeam(teamId: string, userId: number) {
+    const projects = await this.projectRepository.find({
+      where: { teams: { id: teamId } },
+      relations: ['teams'],
+    });
+    for (const project of projects) {
+      await this.addMemberByProjectId(project.id, userId);
+    }
+  }
+
+  async removeMemberFromProjectGroupsForTeam(teamId: string, userId: number) {
+    const projects = await this.projectRepository.find({
+      where: { teams: { id: teamId } },
+      relations: ['teams'],
+    });
+    for (const project of projects) {
+      await this.removeMemberByProjectId(project.id, userId);
+    }
+  }
+
+  async syncProjectGroupMembers(projectId: string): Promise<void> {
+    const [group, project] = await Promise.all([
+      this.groupRepository.findOne({
+        where: { projectId, type: GroupType.PROJECT },
+      }),
+      this.projectRepository.findOne({
+        where: { id: projectId },
+        relations: [
+          'teams',
+          'teams.leader',
+          'teams.members',
+          'teams.members.user',
+        ],
+      }),
+    ]);
+    if (!group || !project) return;
+
+    const expectedIds = new Set<number>();
+    if (group.createdById) expectedIds.add(group.createdById);
+    for (const team of project.teams ?? []) {
+      if (team.leader?.user_id) expectedIds.add(team.leader.user_id);
+      for (const membership of team.members ?? []) {
+        if (membership.user?.user_id) expectedIds.add(membership.user.user_id);
+      }
+    }
+
+    const current = await this.groupMemberRepository.find({
+      where: { groupId: group.id },
+    });
+    const currentIds = new Set(current.map((member) => member.userId));
+    const missing = [...expectedIds].filter(
+      (userId) => !currentIds.has(userId),
+    );
+    if (missing.length) {
+      await this.groupMemberRepository.save(
+        missing.map((userId) =>
+          this.groupMemberRepository.create({
+            groupId: group.id,
+            userId,
+            role:
+              userId === group.createdById
+                ? GroupMemberRole.ADMIN
+                : GroupMemberRole.MEMBER,
+          }),
+        ),
+      );
+    }
+
+    const stale = current.filter((member) => !expectedIds.has(member.userId));
+    if (stale.length) await this.groupMemberRepository.remove(stale);
   }
 
   // Check if a user is an admin of a group
@@ -866,5 +990,21 @@ export class GroupService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private userCanViewProject(user: User, project: Project): boolean {
+    if (user.business?.business_id !== project.business?.business_id) {
+      return false;
+    }
+    const role = getAccessRoleName(user.role);
+    if (role === 'founder' || role === 'manager') return true;
+    if (role === 'client') return user.email === project.client?.email;
+    return (project.teams ?? []).some(
+      (team) =>
+        team.leader?.user_id === user.user_id ||
+        (team.members ?? []).some(
+          (membership) => membership.user?.user_id === user.user_id,
+        ),
+    );
   }
 }

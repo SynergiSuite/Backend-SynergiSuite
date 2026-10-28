@@ -48,7 +48,7 @@ export class DocumentsController {
     @Param('id') id: string,
     @Body() updateDocumentDto: UpdateDocumentDto,
   ) {
-    this.logger.log(`Received request to update document ID: ${id}`);
+    this.logger.log(`Received request to update document ID: ${id}`)
     return this.documentsService.update(req.user, +id, updateDocumentDto);
   }
 
