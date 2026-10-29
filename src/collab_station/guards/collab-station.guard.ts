@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { CollabStationHelper } from '../collab_station.helper';
@@ -60,6 +61,47 @@ export class GroupMemberGuard implements CanActivate {
     }
 
     this.logger.log(`User ${user.email} is a member of group ${groupId}`);
+    return true;
+  }
+}
+
+@Injectable()
+export class MessageOwnerGuard implements CanActivate {
+  private readonly logger = new Logger(MessageOwnerGuard.name);
+
+  constructor(private readonly collabStationHelper: CollabStationHelper) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const messageId = request.params.messageId;
+    if (!messageId) {
+      throw new NotFoundException('Message ID is required');
+    }
+
+    const [userDetails, message] = await Promise.all([
+      this.collabStationHelper.getUserWithBusiness(user.email),
+      this.collabStationHelper.findMessageById(messageId),
+    ]);
+
+    if (!userDetails) {
+      throw new UnauthorizedException('User not found');
+    }
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    if (message.senderId !== userDetails.user_id) {
+      this.logger.warn(
+        `User ${user.email} attempted to delete message ${messageId} owned by another user`,
+      );
+      throw new ForbiddenException('You can only delete your own messages');
+    }
+
     return true;
   }
 }

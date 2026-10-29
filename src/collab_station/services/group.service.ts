@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  OnModuleInit,
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,7 +22,7 @@ import { User } from '../../user/entities/user.entity';
 import { getAccessRoleName } from '../../roles/role-access';
 
 @Injectable()
-export class GroupService {
+export class GroupService implements OnModuleInit {
   private readonly logger = new Logger(GroupService.name);
 
   constructor(
@@ -39,6 +40,26 @@ export class GroupService {
     @Optional()
     private readonly notificationsService?: NotificationsService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureChatDeletionSchema();
+  }
+
+  async ensureChatDeletionSchema(): Promise<void> {
+    try {
+      await this.groupMemberRepository.query(`
+        ALTER TABLE "group_members"
+          ADD COLUMN IF NOT EXISTS "chatDeletedAt" TIMESTAMPTZ
+      `);
+      this.logger.log('Per-user chat deletion schema verified.');
+    } catch (error) {
+      this.logger.error(
+        'Failed to initialize the per-user chat deletion schema',
+        error.stack ?? error.message,
+      );
+      throw error;
+    }
+  }
 
   // Create a custom group and add creator as admin
   async createCustomGroup(
@@ -226,15 +247,27 @@ export class GroupService {
         }
 
         // Get the latest message for this group
-        const latestMessage = await this.groupRepository.manager
+        const latestMessageQuery = this.groupRepository.manager
           .createQueryBuilder()
           .select('m')
           .from('messages', 'm')
           .where('m."groupId" = :groupId', { groupId: membership.groupId })
-          .andWhere('m."deletedAt" IS NULL')
+          .andWhere('m."deletedAt" IS NULL');
+
+        if (membership.chatDeletedAt) {
+          latestMessageQuery.andWhere('m."createdAt" > :chatDeletedAt', {
+            chatDeletedAt: membership.chatDeletedAt,
+          });
+        }
+
+        const latestMessage = await latestMessageQuery
           .orderBy('m."createdAt"', 'DESC')
           .limit(1)
           .getRawOne();
+
+        if (membership.chatDeletedAt && !latestMessage) {
+          continue;
+        }
 
         const missedCalls = await this.callRepository.find({
           where: {
@@ -584,6 +617,25 @@ export class GroupService {
       }
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
+  }
+
+  async deleteChatForUser(groupId: string, userId: number) {
+    this.logger.log(`Deleting chat ${groupId} for user ${userId}`);
+    const membership = await this.groupMemberRepository.findOne({
+      where: { groupId, userId },
+    });
+    if (!membership) {
+      throw new HttpException('Group not found', HttpStatus.NOT_FOUND);
+    }
+
+    membership.chatDeletedAt = new Date();
+    await this.groupMemberRepository.save(membership);
+
+    return {
+      message: 'Chat deleted successfully',
+      groupId,
+      deletedAt: membership.chatDeletedAt,
+    };
   }
 
   // Remove a member from a custom group only

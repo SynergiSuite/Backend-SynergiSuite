@@ -7,7 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, In } from 'typeorm';
+import { And, In, LessThan, MoreThan, Repository } from 'typeorm';
 import {
   Message,
   MessageType,
@@ -302,6 +302,7 @@ export class MessageService implements OnModuleInit {
     cursor?: string,
     sharedEntityType?: SharedEntityType,
     sharedEntityId?: string,
+    requestingUserId?: number,
   ): Promise<MessageResponseDto[]> {
     this.logger.log(
       `Finding messages for group: ${groupId}, limit: ${limit}, cursor: ${cursor}`,
@@ -309,8 +310,28 @@ export class MessageService implements OnModuleInit {
     try {
       const whereCondition: any = { groupId };
 
-      if (cursor) {
+      const membership = requestingUserId
+        ? await this.groupMemberRepository.findOne({
+            where: { groupId, userId: requestingUserId },
+          })
+        : null;
+
+      if (requestingUserId && !membership) {
+        throw new HttpException(
+          'You are not a member of this group',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      if (cursor && membership?.chatDeletedAt) {
+        whereCondition.createdAt = And(
+          MoreThan(membership.chatDeletedAt),
+          LessThan(new Date(cursor)),
+        );
+      } else if (cursor) {
         whereCondition.createdAt = LessThan(new Date(cursor));
+      } else if (membership?.chatDeletedAt) {
+        whereCondition.createdAt = MoreThan(membership.chatDeletedAt);
       }
       if (sharedEntityType) whereCondition.sharedEntityType = sharedEntityType;
       if (sharedEntityId) whereCondition.sharedEntityId = sharedEntityId;
@@ -326,8 +347,15 @@ export class MessageService implements OnModuleInit {
             groupId,
             replyToId: In(roots.map((root) => root.id)),
           };
-          if (cursor) {
+          if (cursor && membership?.chatDeletedAt) {
+            replyCondition.createdAt = And(
+              MoreThan(membership.chatDeletedAt),
+              LessThan(new Date(cursor)),
+            );
+          } else if (cursor) {
             replyCondition.createdAt = LessThan(new Date(cursor));
+          } else if (membership?.chatDeletedAt) {
+            replyCondition.createdAt = MoreThan(membership.chatDeletedAt);
           }
           where = [whereCondition, replyCondition];
         }
@@ -355,6 +383,9 @@ export class MessageService implements OnModuleInit {
         `Error finding messages for group: ${groupId}`,
         error.message,
       );
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }

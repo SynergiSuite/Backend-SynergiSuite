@@ -12,6 +12,7 @@ import { IsVerifiedGuard } from '../../shared/isVerified.guard';
 import { MessageService } from '../services/message.service';
 import { CollabStationHelper } from '../collab_station.helper';
 import { ChatGateway } from '../gateways/chat.gateway';
+import { MessageOwnerGuard } from '../guards/collab-station.guard';
 
 @Controller('chat/messages')
 export class MessageController {
@@ -24,7 +25,7 @@ export class MessageController {
   ) {}
 
   @Delete(':messageId')
-  @UseGuards(JwtGuard, IsVerifiedGuard)
+  @UseGuards(JwtGuard, IsVerifiedGuard, MessageOwnerGuard)
   async deleteMessage(
     @Req() req: Request,
     @Param('messageId') messageId: string,

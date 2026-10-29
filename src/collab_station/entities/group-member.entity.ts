@@ -45,6 +45,9 @@ export class GroupMember {
   @Column({ default: false })
   isMuted: boolean;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  chatDeletedAt: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   joinedAt: Date;
 }

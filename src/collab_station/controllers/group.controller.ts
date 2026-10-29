@@ -142,6 +142,18 @@ export class GroupController {
     return this.groupService.deleteGroup(groupId);
   }
 
+  @Delete('groups/:groupId/chat')
+  @UseGuards(JwtGuard, IsVerifiedGuard, GroupMemberGuard)
+  async deleteChatForCurrentUser(
+    @Req() req: Request,
+    @Param('groupId') groupId: string,
+  ) {
+    const user = await this.collabStationHelper.getUserWithBusiness(
+      (req.user as any).email,
+    );
+    return this.groupService.deleteChatForUser(groupId, user.user_id);
+  }
+
   @Delete('groups/:groupId/members/:userId')
   @UseGuards(JwtGuard, IsVerifiedGuard)
   async removeMember(
@@ -191,18 +203,23 @@ export class GroupController {
   @Get('groups/:groupId/messages')
   @UseGuards(JwtGuard, IsVerifiedGuard, GroupMemberGuard)
   async findByGroup(
+    @Req() req: Request,
     @Param('groupId') groupId: string,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
     @Query('sharedEntityType') sharedEntityType?: SharedEntityType,
     @Query('sharedEntityId') sharedEntityId?: string,
   ) {
+    const user = await this.collabStationHelper.getUserWithBusiness(
+      (req.user as any).email,
+    );
     return this.messageService.findByGroup(
       groupId,
       limit ? parseInt(limit) : 50,
       cursor,
       sharedEntityType,
       sharedEntityId,
+      user.user_id,
     );
   }
 }

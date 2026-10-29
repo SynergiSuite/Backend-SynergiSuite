@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS "group_members" (
   "groupId" uuid NOT NULL,
   "role" group_member_role_enum NOT NULL DEFAULT 'member',
   "isMuted" boolean NOT NULL DEFAULT false,
+  "chatDeletedAt" TIMESTAMPTZ,
   "joinedAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "UQ_group_members_user_group" UNIQUE ("userId", "groupId"),
   CONSTRAINT "FK_group_members_user" FOREIGN KEY ("userId") REFERENCES "users"("user_id") ON DELETE CASCADE,

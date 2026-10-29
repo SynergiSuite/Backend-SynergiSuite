@@ -5,6 +5,7 @@ import { User } from '../user/entities/user.entity';
 import { UserHelper } from '../user/user.helper';
 import { Call } from './entities/call.entity';
 import { GroupMember } from './entities/group-member.entity';
+import { Message } from './entities/message.entity';
 
 @Injectable()
 export class CollabStationHelper {
@@ -13,6 +14,8 @@ export class CollabStationHelper {
     private readonly callRepository: Repository<Call>,
     @InjectRepository(GroupMember)
     private readonly groupMemberRepository: Repository<GroupMember>,
+    @InjectRepository(Message)
+    private readonly messageRepository: Repository<Message>,
     private readonly userHelper: UserHelper,
   ) {}
 
@@ -36,6 +39,12 @@ export class CollabStationHelper {
   ): Promise<GroupMember | null> {
     return this.groupMemberRepository.findOne({
       where: { userId, groupId },
+    });
+  }
+
+  async findMessageById(messageId: string): Promise<Message | null> {
+    return this.messageRepository.findOne({
+      where: { id: messageId },
     });
   }
 

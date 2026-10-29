@@ -17,7 +17,10 @@ import { GroupController } from './controllers/group.controller';
 import { MessageController } from './controllers/message.controller';
 import { CallController } from './controllers/call.controller';
 import { MeetingController } from './controllers/meeting.controller';
-import { GroupMemberGuard } from './guards/collab-station.guard';
+import {
+  GroupMemberGuard,
+  MessageOwnerGuard,
+} from './guards/collab-station.guard';
 import { CallParticipantGuard } from './guards/call-participant.guard';
 import { MeetingParticipantGuard } from './guards/meeting-participant.guard';
 import { MeetingHostGuard } from './guards/meeting-host.guard';
@@ -72,6 +75,7 @@ import { User } from '../user/entities/user.entity';
     CallGateway,
     MeetingGateway,
     GroupMemberGuard,
+    MessageOwnerGuard,
     CallParticipantGuard,
     MeetingParticipantGuard,
     MeetingHostGuard,

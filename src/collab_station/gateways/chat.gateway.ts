@@ -216,6 +216,10 @@ export class ChatGateway
       const messages = await this.messageService.findByGroup(
         payload.groupId,
         50,
+        undefined,
+        undefined,
+        undefined,
+        user.user_id,
       );
       client.emit('message:history', messages);
     } catch (error) {

@@ -342,6 +342,63 @@ describe('MessageService', () => {
       // Image message should have signed URL
       expect(result[1].fileUrl).toBe('https://minio.local/signed-url');
     });
+
+    it('only returns messages created after the user deleted the chat', async () => {
+      const chatDeletedAt = new Date('2026-01-02T00:00:00Z');
+      mockGroupMemberRepository.findOne.mockResolvedValue({ chatDeletedAt });
+      mockMessageRepository.find.mockResolvedValue([]);
+
+      await service.findByGroup(
+        'group-uuid-1',
+        50,
+        undefined,
+        undefined,
+        undefined,
+        1,
+      );
+
+      const findOptions = mockMessageRepository.find.mock.calls[0][0];
+      expect(findOptions.where.createdAt._type).toBe('moreThan');
+      expect(findOptions.where.createdAt._value).toEqual(chatDeletedAt);
+    });
+
+    it('rejects history access when the requesting user is not a member', async () => {
+      mockGroupMemberRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.findByGroup(
+          'group-uuid-1',
+          50,
+          undefined,
+          undefined,
+          undefined,
+          999,
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+    });
+  });
+
+  describe('softDelete - Sender ownership', () => {
+    it('soft deletes a message sent by the requesting user', async () => {
+      const message = createMockMessage({ senderId: 1 });
+      mockMessageRepository.findOne.mockResolvedValue(message);
+
+      await expect(service.softDelete(message.id, 1)).resolves.toEqual({
+        messageId: message.id,
+        groupId: message.groupId,
+      });
+      expect(mockMessageRepository.softRemove).toHaveBeenCalledWith(message);
+    });
+
+    it('rejects deletion of a message sent by another user', async () => {
+      const message = createMockMessage({ senderId: 2 });
+      mockMessageRepository.findOne.mockResolvedValue(message);
+
+      await expect(service.softDelete(message.id, 1)).rejects.toMatchObject({
+        status: 403,
+      });
+      expect(mockMessageRepository.softRemove).not.toHaveBeenCalled();
+    });
   });
 
   describe('save - Text-only message (backwards compatibility)', () => {
