@@ -6,6 +6,8 @@ export class UpdatePasswordDto {
   oldPassword: string;
 
   @IsString({ message: 'Updated password must be a string' })
-  @MinLength(6, { message: 'Updated password must be at least 6 characters long' })
+  @MinLength(6, {
+    message: 'Updated password must be at least 6 characters long',
+  })
   updatedPassword: string;
 }

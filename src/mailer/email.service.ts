@@ -42,6 +42,7 @@ export class EmailService {
     const invited_by = obj.invited_by;
     const invited_bys_role = obj.invited_bys_role;
     const business = obj.business;
+    const registered = obj.registered;
     const text = token;
     const name = obj.name;
     const heading = obj.heading;
@@ -59,7 +60,8 @@ export class EmailService {
           text,
           invited_by,
           invited_bys_role,
-          business
+          business,
+          registered,
         },
       });
       this.logger.log(`[InviteUser] Mailer completed | to=${to}`);
@@ -67,6 +69,36 @@ export class EmailService {
     } catch (error) {
       this.logger.error(
         `[InviteUser] Mailer failed | to=${to} | subject=${subject} | error=${error.message}`,
+        error.stack,
+      );
+      return false;
+    }
+  }
+
+  async sendTaskNotificationEmail(
+    to: string,
+    subject: string,
+    task: any,
+    action: 'created' | 'updated',
+  ) {
+    this.logger.log(
+      `[TaskNotification] Mailer started | to=${to} | subject=${subject} | taskId=${task.id} | action=${action}`,
+    );
+    try {
+      await this.mailerService.sendMail({
+        to,
+        subject,
+        template: 'task_notification',
+        context: {
+          task,
+          action,
+        },
+      });
+      this.logger.log(`[TaskNotification] Mailer completed | to=${to}`);
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `[TaskNotification] Mailer failed | to=${to} | subject=${subject} | error=${error.message}`,
         error.stack,
       );
       return false;

@@ -1,7 +1,21 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  ManyToMany,
+} from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { TeamMember } from './team_members.entity';
-import { IsString, MinLength, MaxLength, Matches, IsOptional } from 'class-validator';
+import {
+  IsString,
+  MinLength,
+  MaxLength,
+  Matches,
+  IsOptional,
+} from 'class-validator';
 import { Business } from 'src/business/entities/business.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { Task } from 'src/projects/entities/task.entity';
@@ -21,13 +35,15 @@ export class Team {
   name: string;
 
   @Column({ nullable: true })
-  @IsOptional() 
+  @IsOptional()
   @IsString({ message: 'Description must be a string' })
   @MinLength(10, { message: 'Description is too short (min: 10 characters)' })
   @MaxLength(255, { message: 'Description is too long (max: 255 characters)' })
   description: string;
 
-  @ManyToOne(() => Business, (business) => business.teams, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Business, (business) => business.teams, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'business_id' })
   business: Business;
 

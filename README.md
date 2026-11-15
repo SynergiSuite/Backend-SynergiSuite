@@ -36,6 +36,32 @@ To start this application the files and working will be provided in this documen
    5. PostgreSQL  (https://www.postgresql.org/docs/)
    6. Mailtrap (https://mailtrap.io/)
 
+## LiveKit Meeting Recordings
+
+Automatic meeting recording is handled by the backend through LiveKit Cloud webhooks and the LiveKit Egress API.
+
+Required environment variables:
+
+```env
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=your_api_key
+LIVEKIT_API_SECRET=your_api_secret
+MINIO_ENDPOINT=https://your-public-minio-domain
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=recordings
+LIVEKIT_WEBHOOK_SECRET=
+LIVEKIT_RECORDING_LAYOUT=speaker
+```
+
+Register this webhook in the LiveKit Cloud dashboard:
+
+```text
+POST https://<your-backend-domain>/api/livekit/webhook
+```
+
+Subscribe to room and egress events. At minimum the backend expects `room_started`, `room_finished`, and `egress_ended`. If `LIVEKIT_WEBHOOK_SECRET` is empty, webhook verification uses `LIVEKIT_API_SECRET`.
+
 ## Project setup
 
 1. Download Node js

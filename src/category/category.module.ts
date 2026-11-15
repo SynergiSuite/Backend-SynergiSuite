@@ -9,6 +9,6 @@ import { DatabaseModule } from '../database/database.module';
   imports: [TypeOrmModule.forFeature([Category]), DatabaseModule],
   controllers: [CategoryController],
   providers: [CategoryService],
-  exports: [CategoryService]
+  exports: [CategoryService],
 })
 export class CategoryModule {}

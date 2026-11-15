@@ -3,7 +3,6 @@ import { MilestoneService } from './milestone.service';
 import { MilestoneController } from './milestone.controller';
 import { Milestone } from './entities/milestone.entity';
 import { DatabaseModule } from 'src/database/database.module';
-import { EmailModule } from 'src/mailer/email.module';
 import { RolesModule } from 'src/roles/roles.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CategoryModule } from 'src/category/category.module';
@@ -15,11 +14,40 @@ import { BusinessModule } from 'src/business/business.module';
 import { TeamsModule } from 'src/teams/teams.module';
 import { Project } from 'src/projects/entities/project.entity';
 import { Task } from 'src/projects/entities/task.entity';
+import { ActivityModule } from 'src/activity/activity.module';
+import {
+  roleGuard,
+  ValidProjectForBusiness,
+  ValidRequestForMilestoneDeletion,
+  ValidRequestForMilestonesCreation,
+  ValidRequestForMilestoneUpdation,
+} from './milestone.guard';
+import { MilestoneHelper } from './milestone.helper';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Milestone, Project, Task]), DatabaseModule, BusinessModule, TeamsModule, RedisModule, UserModule, CategoryModule, RolesModule, forwardRef(() => ProjectsModule)],
-    controllers: [MilestoneController],
-    providers: [MilestoneService, RedisService],
-    exports: [MilestoneService]
+  imports: [
+    TypeOrmModule.forFeature([Milestone, Project, Task]),
+    DatabaseModule,
+    forwardRef(() => BusinessModule),
+    forwardRef(() => TeamsModule),
+    RedisModule,
+    UserModule,
+    CategoryModule,
+    RolesModule,
+    forwardRef(() => ProjectsModule),
+    ActivityModule,
+  ],
+  controllers: [MilestoneController],
+  providers: [
+    MilestoneService,
+    MilestoneHelper,
+    RedisService,
+    roleGuard,
+    ValidProjectForBusiness,
+    ValidRequestForMilestonesCreation,
+    ValidRequestForMilestoneUpdation,
+    ValidRequestForMilestoneDeletion,
+  ],
+  exports: [MilestoneService, MilestoneHelper],
 })
 export class MilestoneModule {}

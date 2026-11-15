@@ -1,279 +1,343 @@
 import {
   BadRequestException,
-  HttpException,
-  HttpStatus,
   Injectable,
   InternalServerErrorException,
-  RequestTimeoutException,
 } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { CreateBusinessDto } from './dto/create-business.dto';
-import { UpdateBusinessDto } from './dto/update-business.dto';
-import { Repository } from 'typeorm';
-import { RolesService } from '../roles/roles.service';
-import { RedisService } from '../redis/redis.service';
-import { UserService } from '../user/user.service';
-import { CategoryService } from '../category/category.service';
-import { Business } from './entities/business.entity';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/entities/activity-log.entity';
+import { PaginationParams } from '../shared/pagination-params';
+import { toRoleResponse } from '../roles/role-access';
+import { BusinessHelper } from './business.helper';
+import {
+  AllEmployeeResponse,
+  BusinessCreationResponse,
+  BusinessInvitationAcceptanceResponse,
+  EmployeeDetailResponse,
+  EmployeesResponse,
+} from './dto/response.dto';
 import { InviteDto } from './dto/send-invitation.dto';
-import { EmailService } from '../mailer/email.service';
 
 @Injectable()
 export class BusinessService {
   private readonly logger = new Logger(BusinessService.name);
 
   constructor(
-    @InjectRepository(Business)
-    private readonly businessRepository: Repository<Business>,
-    private userService: UserService,
-    private categoryService: CategoryService,
-    private roleService: RolesService,
-    private redisService: RedisService,
-    private mailerService: EmailService,
+    private activityService: ActivityService,
+    private readonly businessHelper: BusinessHelper,
   ) {}
 
   // Register New Business
-  async create(email: any, createBusinessDto: CreateBusinessDto) {
-    this.logger.log(`Initiating to register new business for user: ${email}`);
-    const user = await this.userService.findUserWithBusiness(email);
-    const category = await this.categoryService.findOne(
-      createBusinessDto.category_id,
+  async create(
+    email: string,
+    createBusinessDto: CreateBusinessDto,
+  ): Promise<BusinessCreationResponse> {
+    this.logger.log(
+      `Initializing request to register new business for user: ${email}`,
     );
-    const record = await this.businessRepository.create({
-      name: createBusinessDto.name,
-      number_of_employees: createBusinessDto.number_of_employees,
-      category,
-    });
-
     try {
-      this.logger.log(`Saving new business for user: ${email}`);
-      const savedBusiness = await this.businessRepository.save(record);
-      this.logger.log(`New business saved for user: ${email}`);
-      await this.userService.updateRole(1, user, savedBusiness);
+      const { business, updateUserEntity } = await this.businessHelper.create(
+        email,
+        createBusinessDto,
+      );
+      // change
+      await this.activityService.log({
+        action: ActivityAction.CREATED,
+        module: 'business',
+        entityType: 'Business',
+        entityId: business.business_id,
+        entityName: business.name,
+        actor: {
+          ...updateUserEntity,
+          business: business,
+        },
+        businessId: business.business_id,
+        after: {
+          business_id: business.business_id,
+          name: business.name,
+          number_of_employees: business.number_of_employees,
+          categoryId: business.category.id,
+        },
+      });
+      this.logger.log(
+        `Registering business request completed successfully for user: ${email}`,
+      );
       return {
-        message: 'Business registered successfully!',
-        business_name: savedBusiness.name,
-        business_id: savedBusiness.business_id
+        business_name: business.name,
+        business_id: business.business_id,
+        role: toRoleResponse(updateUserEntity.role),
       };
     } catch (error) {
-      this.logger.error(`Failed to register new business for user: ${email}`);
-      this.logger.error(error.message);
-      throw new BadRequestException(error.message);
+      this.logger.error(
+        `Registering business request failed for user: ${email} ${error.message}`,
+      );
+      throw new InternalServerErrorException('Failed to register new business');
     }
   }
 
   // Send invitations
   async sendInvitation(reqObj: any, inviteDto: InviteDto) {
+    const email = reqObj.email;
     this.logger.log(
-      `[InviteUser] Service started | invitingUser=${reqObj.email} | invitedEmail=${inviteDto.email} | roleId=${inviteDto.role_id}`,
+      `Initializing employee invitation request by user: ${email} for: ${inviteDto.email} `,
     );
-    this.logger.log(`[InviteUser] Looking up invited user | invitedEmail=${inviteDto.email}`);
-    const invitedUser = await this.userService.findByEmail(inviteDto.email);
-    this.logger.log(
-      `[InviteUser] Invited user lookup result | invitedEmail=${inviteDto.email} | found=${Boolean(invitedUser)} | userId=${invitedUser?.user_id ?? 'none'} | isVerified=${invitedUser?.is_Verified ?? 'unknown'}`,
-    );
-    this.logger.log(`[InviteUser] Looking up inviting user with business | invitingUser=${reqObj.email}`);
-    const user = await this.userService.findUserAndBusinessByEmail(
-      reqObj.email,
-    );
-    this.logger.log(
-      `[InviteUser] Inviting user lookup result | invitingUser=${reqObj.email} | found=${Boolean(user)} | businessId=${user?.business?.business_id ?? 'none'} | roleId=${user?.role?.id ?? 'none'}`,
-    );
-    this.logger.log(`[InviteUser] Looking up invited role | roleId=${inviteDto.role_id}`);
-    const role = await this.roleService.findOne(inviteDto.role_id);
-    this.logger.log(
-      `[InviteUser] Role lookup result | roleId=${inviteDto.role_id} | found=${Boolean(role)} | roleName=${role?.name ?? 'none'}`,
-    );
-
-    if (!invitedUser || !role) {
-      this.logger.warn(
-        `[InviteUser] Service rejected | invitedFound=${Boolean(invitedUser)} | roleFound=${Boolean(role)} | invitedEmail=${inviteDto.email} | roleId=${inviteDto.role_id}`,
-      );
-      throw new BadRequestException(
-        'No account found linked with this mail. Only verified users can be invited.',
-      );
-    }
-
-    if (!user || !user.business || !user.role) {
-      this.logger.error(
-        `[InviteUser] Service rejected | inviting user missing business or role | invitingUser=${reqObj.email} | userFound=${Boolean(user)} | hasBusiness=${Boolean(user?.business)} | hasRole=${Boolean(user?.role)}`,
-      );
-      throw new BadRequestException('Inviting user does not have a valid business profile.');
-    }
-
-    const emailObj = {
-      to: invitedUser.email,
-      subject: 'Invitation to join an organization',
-      text: 'Continue with this token ',
-      invited_by: user.name,
-      invited_bys_role: user.role.name,
-      business: user.business.name,
-      name: invitedUser.name,
-      heading: 'You were invited to join an organization',
-    };
-    this.logger.log(
-      `[InviteUser] Email payload prepared | to=${emailObj.to} | invitedBy=${emailObj.invited_by} | invitingRole=${emailObj.invited_bys_role} | business=${emailObj.business}`,
-    );
-
     try {
-      this.logger.log(`[InviteUser] Generating invitation token | invitedEmail=${invitedUser.email} | invitedBy=${reqObj.email} | roleId=${role.id}`);
-      const token = await this.redisService.generateTokenForInvitation(
-        invitedUser.email,
-        reqObj.email,
-        role.id,
-      );
-      this.logger.log(`[InviteUser] Invitation token generated | invitedEmail=${invitedUser.email} | tokenLength=${token.length}`);
-      this.logger.log(`[InviteUser] Sending invitation email | invitedEmail=${invitedUser.email}`);
-      const emailSent = await this.mailerService.sendInvitationEmail(emailObj, token);
-      this.logger.log(
-        `[InviteUser] Invitation email provider result | invitedEmail=${invitedUser.email} | sent=${emailSent}`,
-      );
-
-      if (!emailSent) {
-        throw new RequestTimeoutException('Mailer failed to send invitation email.');
-      }
-
-      this.logger.log(`[InviteUser] Service completed | invitedEmail=${invitedUser.email} | invitedBy=${reqObj.email}`);
+      const { token, registered, user, role } =
+        await this.businessHelper.inviteEmail(email, inviteDto);
+      // change
+      await this.activityService.log({
+        action: ActivityAction.CREATED,
+        module: 'business',
+        entityType: 'Invitation',
+        entityId: inviteDto.email,
+        entityName: inviteDto.email,
+        actor: user,
+        businessId: user.business.business_id,
+        after: {
+          invitedEmail: inviteDto.email,
+          roleId: role.id,
+          registered,
+        },
+        description: `${user.name} invited ${inviteDto.email} to ${user.business.name}`,
+      });
       return {
-        message: 'Invitation token was sent out successfully.',
         invitation_token: token,
       };
     } catch (error) {
       this.logger.error(
-        `[InviteUser] Service failed | invitingUser=${reqObj.email} | invitedEmail=${inviteDto.email} | roleId=${inviteDto.role_id} | error=${error.message}`,
-        error.stack,
+        `Employee invitation request failed for user: ${email} for: ${inviteDto.email} | error: ${error.message}`,
       );
-      throw new RequestTimeoutException(
-        'Something went wrong: ' + error.message,
-      );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
   // Accept invitations
-  async acceptInvitation(dataObj: any, token: string) {
+  async acceptInvitation(
+    dataObj: any,
+    token: string,
+  ): Promise<BusinessInvitationAcceptanceResponse> {
     this.logger.log(
-      `Initiating to accept invitation for user: ${dataObj.email}`,
+      `Initializing request to accept invitation for user: ${dataObj.email}`,
     );
     try {
-      this.logger.log(`Fetching data from redis for token: ${token}`);
-      const data = await this.getDataFromRedis(token);
-
-      if (!data) {
-        this.logger.error('No data found for this token');
-        throw new BadRequestException('Invalid token was provided.');
-      }
-      this.logger.log(`Data fetched from redis for token: ${token}`);
-
-      this.logger.log(
-        `Checking if the token is valid for this user: ${dataObj.email}`,
-      );
-      if (data.invited != dataObj.email) {
-        this.logger.error('This token is not valid for this user.');
-        throw new HttpException(
-          'This token is not valid for this user.',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-      this.logger.log(`Token is valid for this user: ${dataObj.email}`);
-
-      this.logger.log(`Setting invited user for user: ${dataObj.email}`);
-      const invitedUser = await this.userService.setInvitedUser(
-        dataObj.email,
-        data.invited_by,
-        data.invited_as,
-      );
-
-      this.logger.log(`Removing token from redis: ${token}`);
-      await this.removeDataFromRedis(token);
-      this.logger.log(`Token removed from redis: ${token}`);
-
-      this.logger.log(
-        `User joined organization successfully: ${dataObj.email}`,
-      );
+      const { business, role, client_id } =
+        await this.businessHelper.acceptInvitation(dataObj.email, token);
       return {
-        message: 'Organization joined successfully.',
-        business_id: invitedUser.business.business_id,
-        business_name: invitedUser.business.name,
-        role_id: invitedUser.role.id,
-        role_name: invitedUser.role.name,
+        business_id: business.business_id,
+        business_name: business.name,
+        role_id: role.id,
+        role_name: role.name,
+        role: toRoleResponse(role),
+        client_id: client_id ?? null,
       };
     } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof HttpException
-      ) {
-        this.logger.error(error.message);
-        throw error;
-      }
-      this.logger.error('Something went wrong: ' + error.message);
-      throw new InternalServerErrorException(
-        'Something went wrong: ' + error.message,
+      this.logger.error(
+        `Failed to accept invitation for user: ${dataObj.email} | error: ${error.message}`,
       );
+      throw new InternalServerErrorException(error.message);
     }
   }
 
-  async getEmployees(data: any) {
-    const user = await this.userService.getUserWithBusiness(data.email);
-    const businessId = user.business.business_id;
-    const employees = await this.userService.getEmployeesByBusinessId(
-      businessId,
+  // Get employees for business with pagination and search and statistics
+  async getEmployees(
+    data: {
+      email: string;
+      search?: string;
+      business_id: number;
+    } & PaginationParams,
+  ): Promise<EmployeesResponse> {
+    const {
+      employees,
+      totalEmployees,
+      registrationCount,
+      projectCount,
+      newProjectsThisMonth,
+    } = await this.businessHelper.getEmployeesPaginayedAndFiltered(
+      data.business_id,
+      Number(data.page) || 1,
+      Number(data.limit) || 5,
+      data.search,
     );
-    const registrationCount = await this.userService.registrationCounts(businessId);
-    const business = await this.businessRepository.findOne({where: {business_id: businessId}, relations: ['projects']});
-    const newProjectsThisMonth = this.newProjects(business); 
-    const projectCount = business.projects.length;
-    return {employees, projectCount, registrationCount, newProjectsThisMonth};
+
+    return {
+      data: employees,
+      meta: {
+        totalItems: totalEmployees,
+        itemCount: employees.length,
+        itemsPerPage: Number(data.limit) || 5,
+        currentPage: Number(data.page) || 1,
+        totalPages: Math.ceil(totalEmployees / Number(data.limit) || 5),
+      },
+      statistics: {
+        registrationCount,
+        projectCount,
+        newProjectsThisMonth,
+      },
+    };
   }
 
+  // Get all employees for business without pagination and search and statistics
+  async getEmployeesAll(business_id: number): Promise<AllEmployeeResponse> {
+    const employees =
+      await this.businessHelper.findAllEmployeesUsingBusinessId(business_id);
+    return {
+      data: employees,
+    };
+  }
+
+  // Calculate new projects this month
   newProjects(business: any) {
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const firstDayOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    );
     const newProjectsThisMonth = business.projects.filter(
-      project => project.created_at >= firstDayOfMonth && project.created_at <= now
+      (project) =>
+        project.created_at >= firstDayOfMonth && project.created_at <= now,
     ).length;
 
     return newProjectsThisMonth;
   }
 
-  findAll() {
-    return `This action returns all business`;
+  // Get employee details
+  async getEmployeeDetail(empObj: any): Promise<EmployeeDetailResponse> {
+    const { teams, completedTaskActivities, recentActivities } =
+      await this.businessHelper.getSpecificEmployeeDetails(empObj);
+    return {
+      employee: {
+        userId: empObj.userId,
+        name: empObj.name,
+        email: empObj.email,
+        salary: empObj.salary,
+        registrationDate: empObj.registrationDate,
+        role: toRoleResponse(empObj.role),
+        business: {
+          businessId: empObj.business.businessId,
+          name: empObj.business.name,
+        },
+      },
+      teams,
+      taskActivity: {
+        completedTasksFromActivity: completedTaskActivities.length,
+        completedTaskActivities: completedTaskActivities.map((activity) => ({
+          activityId: activity.id,
+          taskId: activity.entityId,
+          taskName: activity.entityName,
+          oldValue: activity.oldValue,
+          newValue: activity.newValue,
+          createdAt: activity.createdAt,
+        })),
+      },
+      recentActivities,
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} business`;
+  // Update employee details
+  async updateEmployee(
+    employee: any,
+    updateEmployeeDto: UpdateEmployeeDto,
+    actor: any,
+  ) {
+    if (
+      updateEmployeeDto.salary === undefined &&
+      updateEmployeeDto.roleId === undefined
+    ) {
+      throw new BadRequestException('Salary or roleId is required.');
+    }
+
+    const before = {
+      salary: employee.salary,
+      roleId: employee.role?.id,
+      roleName: employee.role?.name,
+    };
+
+    const { emp_id, emp_name, emp_email, emp_salary, role } =
+      await this.businessHelper.updateEmployee(employee, updateEmployeeDto);
+
+    const after = {
+      salary: emp_salary,
+      roleId: role.id,
+      roleName: role.name,
+    };
+
+    await this.activityService.logFieldChanges(
+      {
+        action: ActivityAction.UPDATED,
+        module: 'business',
+        entityType: 'Employee',
+        entityId: emp_id,
+        entityName: emp_name,
+        actor,
+        businessId: actor.business.business_id,
+        metadata: {
+          employeeEmail: emp_email,
+        },
+      },
+      before,
+      after,
+      ['salary', 'roleId', 'roleName'],
+    );
+
+    return {
+      message: 'Employee updated successfully.',
+      employee: {
+        userId: emp_id,
+        name: emp_name,
+        email: emp_email,
+        salary: emp_salary,
+        role: toRoleResponse(role),
+      },
+    };
   }
 
-  update(id: number, updateBusinessDto: UpdateBusinessDto) {
-    return `This action updates a #${id} business`;
-  }
+  // Remove employee from business
+  async removeEmployeeFromBusiness(employee: any, actor: any) {
+    const before = {
+      userId: employee.user_id,
+      name: employee.name,
+      email: employee.email,
+      businessId: employee.business?.business_id,
+      roleId: employee.role?.id,
+      roleName: employee.role?.name,
+    };
 
-  remove(id: number) {
-    return `This action removes a #${id} business`;
-  }
+    const { emp_id, emp_name, emp_email } =
+      await this.businessHelper.removeEmployeeFromBusiness(employee.email);
 
-  // Helper Functions below
+    await this.activityService.log({
+      action: ActivityAction.DELETED,
+      module: 'business',
+      entityType: 'Employee',
+      entityId: employee.user_id,
+      entityName: before.name,
+      actor,
+      businessId: actor.business.business_id,
+      before,
+      after: {
+        userId: emp_id,
+        name: emp_name,
+        email: emp_email,
+        businessId: null,
+        roleId: null,
+      },
+      description: `${actor.name} removed ${before.name} from ${actor.business.name}`,
+    });
 
-  async getDataFromRedis(key: string) {
-    const data = await this.redisService.get(key);
-    return JSON.parse(data);
-  }
-
-  async removeDataFromRedis(key: string) {
-    return await this.redisService.del(key);
-  }
-
-  async getClientWithBusiness(id: number){
-    return await this.businessRepository.findOne({where: {business_id: id}, relations: ['clients']});
-  }
-
-  async getProjectsWithBusiness(id: number){
-    return await this.businessRepository.findOne({where: {business_id: id}, relations: ['projects']});
-  }
-
-  async getBusiness(email: string){
-    const user = await this.userService.findUserWithBusiness(email);
-    const business = user.business;
-    return business;
+    return {
+      message: 'Employee removed from business successfully.',
+      removedEmployee: {
+        userId: emp_id,
+        name: emp_name,
+        email: emp_email,
+      },
+    };
   }
 }

@@ -1,9 +1,4 @@
-import {
-  ArrayNotEmpty,
-  ArrayUnique,
-  IsArray,
-  IsString,
-} from 'class-validator';
+import { ArrayNotEmpty, ArrayUnique, IsArray, IsString } from 'class-validator';
 
 export class UpdateTeamDto {
   @IsString({ message: 'Project ID must be a string' })

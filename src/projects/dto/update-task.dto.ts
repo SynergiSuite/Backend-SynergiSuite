@@ -9,14 +9,14 @@ import {
 import { TaskPriority, TaskStatus } from '../entities/task.entity';
 
 export class UpdateTaskDto {
-
-  @IsString({ message: 'Title must be a string' })
+  @IsString({ message: 'Task ID must be a string' })
   id: string;
 
+  @IsOptional()
   @IsString({ message: 'Title must be a string' })
   @MinLength(3, { message: 'Title must be at least 3 characters long' })
   @MaxLength(100, { message: 'Title cannot exceed 100 characters' })
-  title: string;
+  title?: string;
 
   @IsOptional()
   @IsString({ message: 'Description must be a string' })
@@ -32,6 +32,20 @@ export class UpdateTaskDto {
   priority?: TaskPriority;
 
   @IsOptional()
-  @IsDateString({}, { message: 'Due date must be a valid ISO 8601 date string' })
+  @IsDateString(
+    {},
+    { message: 'Due date must be a valid ISO 8601 date string' },
+  )
   due_date?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Milestone ID must be a string' })
+  milestoneId?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Team ID must be a string' })
+  teamId?: string;
+
+  @IsOptional()
+  assigneeId?: any;
 }

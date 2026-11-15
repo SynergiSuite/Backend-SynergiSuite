@@ -9,12 +9,52 @@ import { BusinessModule } from 'src/business/business.module';
 import { TeamsModule } from 'src/teams/teams.module';
 import { ClientsModule } from 'src/clients/clients.module';
 import { MilestoneModule } from 'src/milestone/milestone.module';
-import { projectCreationGuard, projectTeamsUpdateGuard, roleGuard, ValidProjectGuard, validRequestForTask, validRequestForTaskDelete, validRequestForTaskList, validRequestForTaskUpdate } from './project.guard';
+import {
+  projectCreationGuard,
+  projectTeamsUpdateGuard,
+  projectUpdateGuard,
+  roleGuard,
+  ValidProjectGuard,
+  validRequestForTask,
+  validRequestForTaskDelete,
+  validRequestForTaskList,
+  validRequestForTaskUpdate,
+} from './project.guard';
+import { CollabStationModule } from '../collab_station/collab_station.module';
+import { EmailModule } from '../mailer/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { ActivityModule } from '../activity/activity.module';
+import { ProjectsHelper } from './projects.helper';
+import { ProjectNotificationsService } from './project-notifications.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Project, Task]), forwardRef(() => UserModule), forwardRef(() => ClientsModule), BusinessModule, TeamsModule, MilestoneModule],
+  imports: [
+    TypeOrmModule.forFeature([Project, Task]),
+    forwardRef(() => UserModule),
+    forwardRef(() => ClientsModule),
+    forwardRef(() => BusinessModule),
+    forwardRef(() => TeamsModule),
+    MilestoneModule,
+    forwardRef(() => CollabStationModule),
+    EmailModule,
+    NotificationsModule,
+    ActivityModule,
+  ],
   controllers: [ProjectsController],
-  providers: [ProjectsService, roleGuard, projectCreationGuard, projectTeamsUpdateGuard, validRequestForTask, validRequestForTaskUpdate, validRequestForTaskDelete, validRequestForTaskList, ValidProjectGuard],
-  exports: [ProjectsService]
+  providers: [
+    ProjectsService,
+    ProjectsHelper,
+    ProjectNotificationsService,
+    roleGuard,
+    projectCreationGuard,
+    projectTeamsUpdateGuard,
+    projectUpdateGuard,
+    validRequestForTask,
+    validRequestForTaskUpdate,
+    validRequestForTaskDelete,
+    validRequestForTaskList,
+    ValidProjectGuard,
+  ],
+  exports: [ProjectsService, ProjectsHelper],
 })
 export class ProjectsModule {}

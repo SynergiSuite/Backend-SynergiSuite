@@ -13,13 +13,35 @@ import { MilestoneModule } from './milestone/milestone.module';
 import { DocumentsModule } from './documents/documents.module';
 import { HealthModule } from './health/health.module';
 import { ScheduleModule } from '@nestjs/schedule';
-
+import { CollabStationModule } from './collab_station/collab_station.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ActivityModule } from './activity/activity.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ClientFeedbackModule } from './client_feedback/client_feedback.module';
+import { RecordingsModule } from './recordings/recordings.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
-    UserModule, AuthModule, BusinessModule, CategoryModule, RolesModule, 
-    TeamsModule, ProjectsModule, ClientsModule, MilestoneModule, DocumentsModule,
-    HealthModule, ScheduleModule.forRoot()
+    UserModule,
+    AuthModule,
+    BusinessModule,
+    CategoryModule,
+    RolesModule,
+    TeamsModule,
+    ProjectsModule,
+    ClientsModule,
+    MilestoneModule,
+    DocumentsModule,
+    HealthModule,
+    ScheduleModule.forRoot(),
+    CollabStationModule,
+    NotificationsModule,
+    ActivityModule,
+    AnalyticsModule,
+    ClientFeedbackModule,
+    RecordingsModule,
+    ChatbotModule,
   ],
   controllers: [AppController],
   providers: [AppService],

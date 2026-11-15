@@ -47,5 +47,4 @@ export class Business {
 
   @OneToMany(() => Client, (client) => client.business)
   clients: Client[];
-
 }

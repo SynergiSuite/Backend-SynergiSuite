@@ -9,6 +9,7 @@ import { RedisService } from '../redis/redis.service';
 import { RedisModule } from '../redis/redis.module';
 import { RolesModule } from '../roles/roles.module';
 import { JwtService } from '@nestjs/jwt';
+import { UserHelper } from './user.helper';
 
 @Module({
   imports: [
@@ -16,10 +17,10 @@ import { JwtService } from '@nestjs/jwt';
     EmailModule,
     DatabaseModule,
     RedisModule,
-    RolesModule
+    RolesModule,
   ],
   controllers: [UserController],
-  providers: [UserService, RedisService, JwtService],
-  exports: [UserService],
+  providers: [UserService, RedisService, JwtService, UserHelper],
+  exports: [UserService, UserHelper],
 })
 export class UserModule {}
