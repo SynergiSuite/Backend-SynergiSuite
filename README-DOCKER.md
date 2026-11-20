@@ -18,19 +18,18 @@ This guide explains how to set up and run the SynergiSuite backend using Docker.
 
 3. **Build and start the containers**
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 
    For running in detached mode (in the background):
    ```bash
-   docker-compose up -d --build
+   docker compose up -d --build --wait
    ```
 
 4. **Access the services**
-   - API: http://localhost:3000
-   - PostgreSQL: localhost:5432
+   - API: http://localhost:3002
+   - PostgreSQL: localhost:5433 (configurable with `POSTGRES_HOST_PORT`)
    - Redis: localhost:6379
-   - pgAdmin: http://localhost:5050
 
 ## Development Workflow
 
@@ -38,38 +37,93 @@ This guide explains how to set up and run the SynergiSuite backend using Docker.
 When you make changes to your code, you'll need to rebuild the container:
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 ### Running database migrations
 If you need to run database migrations:
 
 ```bash
-docker-compose exec app npm run typeorm migration:run
+docker compose exec app npm run typeorm migration:run
 ```
 
 ### Viewing logs
 View logs for all services:
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 View logs for a specific service:
 ```bash
-docker-compose logs -f app
+docker compose logs -f app
 ```
 
 ## Stopping the services
 
 To stop all running containers:
 ```bash
-docker-compose down
+docker compose down
 ```
 
 To stop and remove all containers, networks, and volumes:
 ```bash
-docker-compose down -v
+docker compose down -v
 ```
+
+`docker compose down -v` permanently deletes the local PostgreSQL, Redis, and
+MinIO data volumes. Use it only when you intentionally want a clean reset.
+
+## Importing a Neon database
+
+The commands below use the PostgreSQL client tools already included in the
+`postgres` container. Before importing, make sure the local database is empty
+or that you are comfortable replacing its contents.
+
+1. Start PostgreSQL:
+
+   ```bash
+   docker compose up -d postgres --wait
+   ```
+
+2. Copy the direct (non-pooled) connection string from the Neon dashboard and
+   export it in your current terminal. Keep `sslmode=require` in the URL:
+
+   ```bash
+   export NEON_DATABASE_URL='postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require'
+   ```
+
+3. Create a custom-format dump. The URL is passed through the environment and
+   is not written to the repository:
+
+   ```bash
+   docker compose exec -T -e NEON_DATABASE_URL postgres sh -c \
+     'pg_dump --dbname="$NEON_DATABASE_URL" --format=custom --no-owner --no-acl' \
+     > neon.dump
+   ```
+
+4. Restore the dump into the local database:
+
+   ```bash
+   docker compose exec -T postgres sh -c \
+     'pg_restore --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" \
+       --clean --if-exists --no-owner --no-acl --single-transaction' \
+     < neon.dump
+   ```
+
+5. Start the complete stack and verify the imported tables:
+
+   ```bash
+   docker compose up -d --build --wait
+   docker compose exec postgres sh -c \
+     'psql --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" -c "\\dt"'
+   docker compose exec postgres sh -c \
+     'psql --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" -c "ANALYZE"'
+   ```
+
+The dump file contains your production data, so do not commit `neon.dump`.
+Delete it securely after confirming the migration. If Neon uses extensions,
+install and enable equivalent extensions locally before restoring. The local
+PostgreSQL major version should be the same as or newer than the Neon source.
 
 ## Environment Variables
 
