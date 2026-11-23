@@ -166,7 +166,7 @@ export class ChatbotHelper {
       this.reportRepository.create({
         businessId: input.businessId,
         reportName: input.reportName,
-        bucket: 'reports',
+        bucket: 'synergi-reports',
         objectKey: input.objectKey,
         contentType: 'application/pdf',
         fileSize: input.fileSize,
@@ -365,7 +365,7 @@ export class ChatbotHelper {
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         business_id int NOT NULL,
         report_name varchar(255) NOT NULL,
-        bucket varchar(255) NOT NULL DEFAULT 'reports',
+        bucket varchar(255) NOT NULL DEFAULT 'synergi-reports',
         object_key text NOT NULL,
         content_type varchar(120) NOT NULL DEFAULT 'application/pdf',
         file_size bigint NOT NULL,

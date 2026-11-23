@@ -401,7 +401,7 @@ export class RecordingService implements OnModuleInit {
       process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID;
     const minioSecretKey =
       process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY;
-    const bucket = process.env.MINIO_BUCKET || 'recordings';
+    const bucket = process.env.MINIO_BUCKET || 'synergi-recordings';
     const layout = process.env.LIVEKIT_RECORDING_LAYOUT || 'speaker';
 
     if (!minioEndpoint || !minioAccessKey || !minioSecretKey) {

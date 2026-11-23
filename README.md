@@ -46,13 +46,19 @@ Required environment variables:
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=your_api_key
 LIVEKIT_API_SECRET=your_api_secret
-MINIO_ENDPOINT=https://your-public-minio-domain
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=recordings
+AWS_S3_PUBLIC_ENDPOINT=https://object-vault.sysanctum.dpdns.org
+MINIO_ENDPOINT=https://object-vault.sysanctum.dpdns.org
+MINIO_ACCESS_KEY=<your-new-access-key>
+MINIO_SECRET_KEY=<your-new-secret-key>
+MINIO_BUCKET=synergi-recordings
+CHATBOT_REPORTS_BUCKET=synergi-reports
 LIVEKIT_WEBHOOK_SECRET=
 LIVEKIT_RECORDING_LAYOUT=speaker
 ```
+
+The shared upload client uses `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` when
+the equivalent `AWS_*` variables are not set. MinIO is hosted externally and
+is not started by Docker Compose.
 
 Register this webhook in the LiveKit Cloud dashboard:
 

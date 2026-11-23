@@ -9,6 +9,7 @@ import {
   CreateBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getS3PublicClientConfig } from './minIO.config';
 
 @Injectable()
 export class MinIO {
@@ -18,7 +19,9 @@ export class MinIO {
 
   onModuleInit() {
     const publicEndpoint =
-      process.env.AWS_S3_PUBLIC_ENDPOINT || process.env.AWS_S3_ENDPOINT;
+      process.env.AWS_S3_PUBLIC_ENDPOINT ||
+      process.env.MINIO_ENDPOINT ||
+      process.env.AWS_S3_ENDPOINT;
     if (
       publicEndpoint?.includes('localhost') ||
       publicEndpoint?.includes('minio:9000')
@@ -30,16 +33,7 @@ export class MinIO {
   }
 
   private createPresignClient() {
-    return new S3Client({
-      region: process.env.AWS_REGION,
-      endpoint:
-        process.env.AWS_S3_PUBLIC_ENDPOINT || process.env.AWS_S3_ENDPOINT,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-      forcePathStyle: true,
-    });
+    return new S3Client(getS3PublicClientConfig());
   }
 
   async ensureBucket(bucket: string = process.env.S3_BUCKET_NAME) {

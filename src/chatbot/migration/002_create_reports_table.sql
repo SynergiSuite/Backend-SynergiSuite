@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS reports (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id int NOT NULL,
   report_name varchar(255) NOT NULL,
-  bucket varchar(255) NOT NULL DEFAULT 'reports',
+  bucket varchar(255) NOT NULL DEFAULT 'synergi-reports',
   object_key text NOT NULL,
   content_type varchar(120) NOT NULL DEFAULT 'application/pdf',
   file_size bigint NOT NULL,

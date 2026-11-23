@@ -18,7 +18,7 @@ export class Report {
   @Column({ name: 'report_name', length: 255 })
   reportName: string;
 
-  @Column({ length: 255, default: 'reports' })
+  @Column({ length: 255, default: 'synergi-reports' })
   bucket: string;
 
   @Column({ name: 'object_key', type: 'text' })

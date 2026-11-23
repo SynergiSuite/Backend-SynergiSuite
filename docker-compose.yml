@@ -15,8 +15,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      minio: # <-- Added dependency
-        condition: service_started
     environment:
       - NODE_ENV=development
       - PORT=3002
@@ -24,22 +22,9 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_SSL=false
-      # Added these for your backend to connect to MinIO:
+      # External storage settings are loaded from .env.
       - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=minioadmin
-      - AWS_SECRET_ACCESS_KEY=minioadmin
-      - AWS_S3_ENDPOINT=http://minio:9000
-      - AWS_S3_PUBLIC_ENDPOINT=${AWS_S3_PUBLIC_ENDPOINT:-http://localhost:9000}
-      - MINIO_NGROK_ENABLED=${MINIO_NGROK_ENABLED:-false}
       - S3_BUCKET_NAME=synergisuite-resources
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://localhost:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_BUCKET=${MINIO_BUCKET:-recordings}
-      - MINIO_NGROK_DOMAIN=${MINIO_NGROK_DOMAIN:-}
-      - MINIO_NGROK_AUTHTOKEN=${MINIO_NGROK_AUTHTOKEN:-}
-      - LIVEKIT_WEBHOOK_SECRET=${LIVEKIT_WEBHOOK_SECRET:-}
-      - LIVEKIT_RECORDING_LAYOUT=${LIVEKIT_RECORDING_LAYOUT:-speaker}
       - NGROK_DOMAIN=${NGROK_DOMAIN:-}
     command: sh -c "rm -rf dist && npm run start:dev"
     volumes:
@@ -97,44 +82,9 @@ services:
   #   networks:
   #     - app-network
 
-  # --- NEW STORAGE VAULT ---
-  minio:
-    image: cgr.dev/chainguard/minio:latest
-    container_name: synergisuite-minio
-    restart: unless-stopped
-    ports:
-      - '9000:9000' # API Port (Used by Frontend & Backend)
-      - '9001:9001' # Web Dashboard Port
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_API_CORS_ALLOW_ORIGIN: '*'
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio-data:/data
-    networks:
-      - app-network
-
-  minio-ngrok:
-    image: ngrok/ngrok:latest
-    container_name: synergisuite-minio-ngrok
-    restart: unless-stopped
-    depends_on:
-      minio:
-        condition: service_started
-    environment:
-      NGROK_AUTHTOKEN: ${MINIO_NGROK_AUTHTOKEN}
-    command:
-      - http
-      - --domain=${MINIO_NGROK_DOMAIN}
-      - minio:9000
-    networks:
-      - app-network
-
 volumes:
   postgres-data:
   redis-data:
-  minio-data: # <-- Added persistent volume for uploaded files
 
 networks:
   app-network:

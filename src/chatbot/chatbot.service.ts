@@ -151,7 +151,7 @@ export class ChatbotService implements OnModuleInit {
       );
 
       await this.minioService.uploadBuffer(
-        'reports',
+        'synergi-reports',
         objectKey,
         file.buffer,
         'application/pdf',
